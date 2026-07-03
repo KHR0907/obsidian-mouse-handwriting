@@ -8,16 +8,16 @@
 
 import { TextFileView, WorkspaceLeaf } from "obsidian";
 import { DrawingCanvas } from "./drawingCanvas";
-import { maskFromAlpha, score } from "./scorer";
 import { PracticeSession } from "./practiceSession";
 import {
-	GLYPH_SETS,
-	QUOTES,
+	glyphSetsFor,
+	quotesFor,
 	shortSetFromQuote,
 	longSetFromQuote,
 	ProblemSet,
+	ContentLang,
 } from "./problemSets";
-import { Lang, strings, setName, Strings } from "./i18n";
+import { Lang, LANGS, strings, setName, Strings } from "./i18n";
 
 export const PENMANSHIP_VIEW_TYPE = "penmanship-view";
 export const CANVAS_SIZE = 340;
@@ -33,10 +33,10 @@ type MenuState = "root" | "quote-short" | "quote-long";
 export class PenmanshipView extends TextFileView {
 	private session: PracticeSession | null = null;
 	private canvas: DrawingCanvas | null = null;
-	/** Selected mode while navigating the picker menus. */
-	private pendingMode: "scored" | "free" = "scored";
 	/** Which picker screen is showing (only relevant when session is null). */
 	private menu: MenuState = "root";
+	/** Which content language's sets to show in the picker. Default English. */
+	private contentLang: ContentLang = "en";
 	/** Reads the current UI language from plugin settings. */
 	private getLang: () => Lang;
 
@@ -128,30 +128,24 @@ export class PenmanshipView extends TextFileView {
 
 	/** Start a session from a chosen set and re-render. */
 	private startSet(set: ProblemSet) {
-		this.session = new PracticeSession(set, this.pendingMode);
+		this.session = new PracticeSession(set);
 		this.persist();
 		this.render();
 	}
 
-	private renderModeRow(wrap: HTMLElement) {
-		const t = this.t;
-		const modeRow = wrap.createDiv({ cls: "penmanship-mode-row" });
-		modeRow.createSpan({ text: t.mode });
-		const scoredBtn = modeRow.createEl("button", { text: t.modeScored });
-		const freeBtn = modeRow.createEl("button", { text: t.modeFree });
-		const sync = () => {
-			scoredBtn.toggleClass("mod-cta", this.pendingMode === "scored");
-			freeBtn.toggleClass("mod-cta", this.pendingMode === "free");
+	/** Dropdown to choose which content language's sets are shown. */
+	private renderLangRow(wrap: HTMLElement) {
+		const row = wrap.createDiv({ cls: "penmanship-lang-row" });
+		row.createSpan({ text: `${this.t.practiceLang}: ` });
+		const select = row.createEl("select", { cls: "dropdown" });
+		for (const l of LANGS) {
+			const opt = select.createEl("option", { text: l.label, value: l.id });
+			if (l.id === this.contentLang) opt.selected = true;
+		}
+		select.onchange = () => {
+			this.contentLang = select.value as ContentLang;
+			this.render();
 		};
-		scoredBtn.onclick = () => {
-			this.pendingMode = "scored";
-			sync();
-		};
-		freeBtn.onclick = () => {
-			this.pendingMode = "free";
-			sync();
-		};
-		sync();
 	}
 
 	private renderRootMenu(root: HTMLElement) {
@@ -160,12 +154,12 @@ export class PenmanshipView extends TextFileView {
 		const wrap = root.createDiv({ cls: "penmanship-picker" });
 		wrap.createEl("h2", { text: t.appTitle });
 		wrap.createEl("p", { text: t.pickKind, cls: "penmanship-sub" });
-		this.renderModeRow(wrap);
+		this.renderLangRow(wrap);
 
 		const grid = wrap.createDiv({ cls: "penmanship-set-grid" });
 
-		// Glyph / word sets — enter directly.
-		for (const set of GLYPH_SETS) {
+		// Glyph / word sets for the chosen content language — enter directly.
+		for (const set of glyphSetsFor(this.contentLang)) {
 			const card = grid.createDiv({ cls: "penmanship-set-card" });
 			card.createEl("div", {
 				text: setName(lang, set.id),
@@ -231,9 +225,10 @@ export class PenmanshipView extends TextFileView {
 			text: kind === "quote-short" ? t.pickQuoteShort : t.pickQuoteLong,
 			cls: "penmanship-sub",
 		});
+		this.renderLangRow(wrap);
 
 		const grid = wrap.createDiv({ cls: "penmanship-set-grid" });
-		for (const q of QUOTES) {
+		for (const q of quotesFor(this.contentLang)) {
 			const card = grid.createDiv({ cls: "penmanship-set-card" });
 			card.createEl("div", { text: q.name, cls: "penmanship-set-name" });
 			card.createEl("div", {
@@ -269,12 +264,6 @@ export class PenmanshipView extends TextFileView {
 			text: `${s.currentIndex + 1} / ${s.total}`,
 			cls: "penmanship-progress-count",
 		});
-		if (s.mode === "scored") {
-			prog.createSpan({
-				text: `${t.avg} ${s.overall()}%`,
-				cls: "penmanship-progress-score",
-			});
-		}
 		const bar = header.createDiv({ cls: "penmanship-bar" });
 		const fill = bar.createDiv({ cls: "penmanship-bar-fill" });
 		fill.style.width = `${((s.currentIndex) / s.total) * 100}%`;
@@ -315,20 +304,11 @@ export class PenmanshipView extends TextFileView {
 			height: ch,
 		});
 
-		const result = root.createDiv({ cls: "penmanship-result" });
-		const prev = s.scores[s.currentIndex];
-		if (prev !== null && s.mode === "scored") {
-			result.setText(`${t.prevScore} ${prev}%`);
-		}
-
 		// Controls
 		const controls = root.createDiv({ cls: "penmanship-controls" });
 
 		const clearBtn = controls.createEl("button", { text: t.clear });
-		clearBtn.onclick = () => {
-			this.canvas?.clear();
-			result.setText("");
-		};
+		clearBtn.onclick = () => this.canvas?.clear();
 
 		const undoBtn = controls.createEl("button", { text: t.undo });
 		undoBtn.onclick = () => this.canvas?.undo();
@@ -350,43 +330,15 @@ export class PenmanshipView extends TextFileView {
 			};
 		}
 
-		const nextLabel =
-			s.mode === "scored"
-				? s.currentIndex === s.total - 1
-					? t.scoreAndFinish
-					: t.scoreAndNext
-				: s.currentIndex === s.total - 1
-					? t.finish
-					: t.next;
+		const nextLabel = s.currentIndex === s.total - 1 ? t.finish : t.next;
 		const nextBtn = controls.createEl("button", {
 			text: nextLabel,
 			cls: "mod-cta",
 		});
 		nextBtn.onclick = () => {
-			if (s.mode === "scored") {
-				if (!this.canvas || this.canvas.isEmpty()) {
-					result.setText(t.drawFirst);
-					return;
-				}
-				const tm = this.canvas.targetMaskPixels();
-				const u = this.canvas.userMaskPixels();
-				const sc = score(
-					maskFromAlpha(tm.pixels, tm.width, tm.height),
-					maskFromAlpha(u.pixels, u.width, u.height)
-				);
-				s.recordScore(sc.score);
-			} else {
-				// free mode: mark as visited with score 0 placeholder so progress advances
-				s.recordScore(s.scores[s.currentIndex] ?? 0);
-			}
-			const moved = s.next();
+			s.next();
 			this.persist();
-			if (!moved) {
-				// last cell just recorded
-				this.render();
-			} else {
-				this.render();
-			}
+			this.render();
 		};
 	}
 
@@ -396,29 +348,6 @@ export class PenmanshipView extends TextFileView {
 		const wrap = root.createDiv({ cls: "penmanship-complete" });
 		wrap.createEl("h2", { text: t.complete });
 		wrap.createEl("div", { text: this.setTitle(s.set), cls: "penmanship-sub" });
-
-		if (s.mode === "scored") {
-			wrap.createEl("div", {
-				text: `${t.overallScore} ${s.overall()}%`,
-				cls: "penmanship-complete-score",
-			});
-			// Per-cell breakdown only makes sense with multiple cells.
-			if (s.total > 1) {
-				const summary = wrap.createDiv({ cls: "penmanship-summary" });
-				s.set.cells.forEach((cell, i) => {
-					const label = cell.replace(/\n/g, " ");
-					const chip = summary.createDiv({ cls: "penmanship-chip" });
-					chip.createSpan({
-						text: label.length > 16 ? label.slice(0, 16) + "…" : label,
-						cls: "penmanship-chip-cell",
-					});
-					chip.createSpan({
-						text: `${s.scores[i] ?? 0}%`,
-						cls: "penmanship-chip-score",
-					});
-				});
-			}
-		}
 
 		const controls = wrap.createDiv({ cls: "penmanship-controls" });
 		const again = controls.createEl("button", {

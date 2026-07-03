@@ -1,28 +1,27 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-// Mirror of PracticeSession's pure logic for dependency-free behavioral tests.
+// Mirror of PracticeSession's pure visited-based logic for dependency-free tests.
 // (src/practiceSession.ts is TS + imports Obsidian-free problemSets; we test the
 // algorithm directly here.)
 
 class Session {
-	constructor(cells, mode = "scored") {
+	constructor(cells) {
 		this.cells = cells;
-		this.mode = mode;
 		this.currentIndex = 0;
-		this.scores = new Array(cells.length).fill(null);
+		this.visited = new Array(cells.length).fill(false);
+		this.visited[0] = true;
 	}
 	get total() {
 		return this.cells.length;
 	}
-	recordScore(sc) {
-		this.scores[this.currentIndex] = sc;
-	}
 	next() {
 		if (this.currentIndex < this.total - 1) {
 			this.currentIndex++;
+			this.visited[this.currentIndex] = true;
 			return true;
 		}
+		this.visited[this.currentIndex] = true;
 		return false;
 	}
 	prev() {
@@ -33,24 +32,20 @@ class Session {
 		return false;
 	}
 	isComplete() {
-		return this.scores.every((s) => s !== null);
-	}
-	overall() {
-		const done = this.scores.filter((s) => s !== null);
-		if (!done.length) return 0;
-		return Math.round(done.reduce((a, b) => a + b, 0) / done.length);
+		return this.visited[this.total - 1] === true;
 	}
 	reset() {
 		this.currentIndex = 0;
-		this.scores = new Array(this.total).fill(null);
+		this.visited = new Array(this.total).fill(false);
+		this.visited[0] = true;
 	}
 }
 
-test("starts at first cell, nothing complete", () => {
+test("starts at first cell, first cell already visited, not complete", () => {
 	const s = new Session(["a", "b", "c"]);
 	assert.equal(s.currentIndex, 0);
+	assert.equal(s.visited[0], true);
 	assert.equal(s.isComplete(), false);
-	assert.equal(s.overall(), 0);
 });
 
 test("advances and stops at last cell", () => {
@@ -67,34 +62,28 @@ test("prev stops at first cell", () => {
 	assert.equal(s.currentIndex, 0);
 });
 
-test("records scores per cell and computes average", () => {
+test("complete once the last cell is visited", () => {
 	const s = new Session(["a", "b", "c"]);
-	s.recordScore(90);
-	s.next();
-	s.recordScore(80);
-	s.next();
-	s.recordScore(70);
-	assert.equal(s.isComplete(), true);
-	assert.equal(s.overall(), 80);
-});
-
-test("average ignores unattempted cells", () => {
-	const s = new Session(["a", "b", "c", "d"]);
-	s.recordScore(100);
-	s.next();
-	s.recordScore(50);
-	// only 2 of 4 attempted
-	assert.equal(s.overall(), 75);
 	assert.equal(s.isComplete(), false);
+	s.next();
+	assert.equal(s.isComplete(), false);
+	s.next();
+	assert.equal(s.isComplete(), true);
 });
 
-test("reset clears progress", () => {
+test("finishing on the last cell (next returns false) marks complete", () => {
+	const s = new Session(["only"]);
+	// single-cell set: already on last cell
+	assert.equal(s.next(), false);
+	assert.equal(s.isComplete(), true);
+});
+
+test("reset clears visited except the first cell", () => {
 	const s = new Session(["a", "b"]);
-	s.recordScore(90);
 	s.next();
-	s.recordScore(90);
+	assert.equal(s.isComplete(), true);
 	s.reset();
 	assert.equal(s.currentIndex, 0);
 	assert.equal(s.isComplete(), false);
-	assert.equal(s.overall(), 0);
+	assert.equal(s.visited[0], true);
 });

@@ -18,10 +18,15 @@ export type SetKind =
 	| "quote-short" // one line per cell (wide canvas)
 	| "quote-long"; // whole multi-line passage in one cell (tall canvas)
 
+/** Content language a set belongs to (independent of the UI language). */
+export type ContentLang = "ko" | "en" | "ja";
+
 export interface ProblemSet {
 	id: string;
 	name: string;
 	kind: SetKind;
+	/** Which script/language this content is in. */
+	contentLang: ContentLang;
 	/**
 	 * The cells to trace, in order.
 	 *  - glyph/word: single glyphs or short words.
@@ -82,16 +87,24 @@ const JAPANESE_WORDS = [
  * `name` is a translation key resolved by the view against i18n set names.
  */
 export const GLYPH_SETS: ProblemSet[] = [
-	{ id: "korean-jamo", name: "korean-jamo", kind: "jamo", cells: KOREAN_JAMO },
-	{ id: "alphabet-upper", name: "alphabet-upper", kind: "alphabet", cells: ALPHABET_UPPER },
-	{ id: "alphabet-lower", name: "alphabet-lower", kind: "alphabet", cells: ALPHABET_LOWER },
-	{ id: "hiragana", name: "hiragana", kind: "jamo", cells: HIRAGANA },
-	{ id: "katakana", name: "katakana", kind: "jamo", cells: KATAKANA },
-	{ id: "numbers", name: "numbers", kind: "number", cells: DIGITS },
-	{ id: "korean-words", name: "korean-words", kind: "word", cells: KOREAN_WORDS },
-	{ id: "english-words", name: "english-words", kind: "word", cells: ENGLISH_WORDS },
-	{ id: "japanese-words", name: "japanese-words", kind: "word", cells: JAPANESE_WORDS },
+	// Korean
+	{ id: "korean-jamo", name: "korean-jamo", kind: "jamo", contentLang: "ko", cells: KOREAN_JAMO },
+	{ id: "korean-words", name: "korean-words", kind: "word", contentLang: "ko", cells: KOREAN_WORDS },
+	// English (also holds the language-neutral number set as the default group)
+	{ id: "alphabet-upper", name: "alphabet-upper", kind: "alphabet", contentLang: "en", cells: ALPHABET_UPPER },
+	{ id: "alphabet-lower", name: "alphabet-lower", kind: "alphabet", contentLang: "en", cells: ALPHABET_LOWER },
+	{ id: "numbers", name: "numbers", kind: "number", contentLang: "en", cells: DIGITS },
+	{ id: "english-words", name: "english-words", kind: "word", contentLang: "en", cells: ENGLISH_WORDS },
+	// Japanese
+	{ id: "hiragana", name: "hiragana", kind: "jamo", contentLang: "ja", cells: HIRAGANA },
+	{ id: "katakana", name: "katakana", kind: "jamo", contentLang: "ja", cells: KATAKANA },
+	{ id: "japanese-words", name: "japanese-words", kind: "word", contentLang: "ja", cells: JAPANESE_WORDS },
 ];
+
+/** Glyph/word sets for a given content language. */
+export function glyphSetsFor(lang: ContentLang): ProblemSet[] {
+	return GLYPH_SETS.filter((s) => s.contentLang === lang);
+}
 
 // ---- quote catalog (poems / songs / novels) ------------------------------
 
@@ -99,6 +112,7 @@ export interface Quote {
 	id: string;
 	name: string;
 	source: string;
+	contentLang: ContentLang;
 	lines: string[];
 }
 
@@ -107,6 +121,7 @@ export const QUOTES: Quote[] = [
 		id: "seosi",
 		name: "서시 — 윤동주",
 		source: "윤동주 「서시」",
+		contentLang: "ko",
 		lines: [
 			"죽는 날까지 하늘을 우러러",
 			"한 점 부끄럼이 없기를,",
@@ -120,6 +135,7 @@ export const QUOTES: Quote[] = [
 		id: "azalea",
 		name: "진달래꽃 — 김소월",
 		source: "김소월 「진달래꽃」",
+		contentLang: "ko",
 		lines: [
 			"나 보기가 역겨워",
 			"가실 때에는",
@@ -132,6 +148,7 @@ export const QUOTES: Quote[] = [
 		id: "frost",
 		name: "The Road Not Taken — Frost",
 		source: "Robert Frost, \"The Road Not Taken\"",
+		contentLang: "en",
 		lines: [
 			"Two roads diverged in a yellow wood,",
 			"And sorry I could not travel both",
@@ -144,6 +161,7 @@ export const QUOTES: Quote[] = [
 		id: "austen",
 		name: "Pride and Prejudice — Austen",
 		source: "Jane Austen, Pride and Prejudice",
+		contentLang: "en",
 		lines: [
 			"It is a truth universally acknowledged,",
 			"that a single man in possession",
@@ -155,6 +173,7 @@ export const QUOTES: Quote[] = [
 		id: "basho",
 		name: "古池や — 松尾芭蕉",
 		source: "松尾芭蕉「古池や」",
+		contentLang: "ja",
 		lines: [
 			"古池や",
 			"蛙飛び込む",
@@ -167,12 +186,18 @@ export function getQuote(id: string): Quote | undefined {
 	return QUOTES.find((q) => q.id === id);
 }
 
+/** Quotes for a given content language. */
+export function quotesFor(lang: ContentLang): Quote[] {
+	return QUOTES.filter((q) => q.contentLang === lang);
+}
+
 /** Build the ProblemSet for tracing a quote one line at a time. */
 export function shortSetFromQuote(q: Quote): ProblemSet {
 	return {
 		id: `quote-short:${q.id}`,
 		name: q.name,
 		kind: "quote-short",
+		contentLang: q.contentLang,
 		cells: q.lines,
 		source: q.source,
 	};
@@ -184,6 +209,7 @@ export function longSetFromQuote(q: Quote): ProblemSet {
 		id: `quote-long:${q.id}`,
 		name: q.name,
 		kind: "quote-long",
+		contentLang: q.contentLang,
 		cells: [q.lines.join("\n")],
 		source: q.source,
 	};

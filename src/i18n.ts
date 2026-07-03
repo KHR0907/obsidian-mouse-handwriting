@@ -19,9 +19,7 @@ export const DEFAULT_LANG: Lang = "ko";
 export interface Strings {
 	appTitle: string;
 	pickKind: string;
-	mode: string;
-	modeScored: string;
-	modeFree: string;
+	practiceLang: string; // label for the content-language dropdown
 	shortPractice: string;
 	shortPracticeDesc: string;
 	longPractice: string;
@@ -39,14 +37,8 @@ export interface Strings {
 	undo: string;
 	prev: string;
 	next: string;
-	scoreAndNext: string;
-	scoreAndFinish: string;
 	finish: string;
-	drawFirst: string;
-	prevScore: string; // "previous score N%"
-	avg: string; // "avg N%"
 	complete: string;
-	overallScore: string; // "overall accuracy N%"
 	again: string;
 	otherSet: string;
 	newSheet: string;
@@ -58,9 +50,7 @@ export interface Strings {
 const KO: Strings = {
 	appTitle: "따라쓰기 연습장",
 	pickKind: "연습할 종류를 고르세요.",
-	mode: "모드: ",
-	modeScored: "채점",
-	modeFree: "자유",
+	practiceLang: "연습 언어",
 	shortPractice: "짧은 글 연습",
 	shortPracticeDesc: "유명한 글귀를 한 줄씩 따라쓰기",
 	longPractice: "긴 글 연습",
@@ -78,14 +68,8 @@ const KO: Strings = {
 	undo: "되돌리기",
 	prev: "◀ 이전",
 	next: "다음 ▶",
-	scoreAndNext: "채점 & 다음 ▶",
-	scoreAndFinish: "채점 & 완료",
 	finish: "완료",
-	drawFirst: "먼저 써주세요.",
-	prevScore: "이전 점수",
-	avg: "평균",
 	complete: "연습 완료! 🎉",
-	overallScore: "전체 평균 정확도",
 	again: "다시하기",
 	otherSet: "다른 세트",
 	newSheet: "새 따라쓰기 연습장",
@@ -97,9 +81,7 @@ const KO: Strings = {
 const EN: Strings = {
 	appTitle: "Penmanship Practice",
 	pickKind: "Choose what to practice.",
-	mode: "Mode: ",
-	modeScored: "Scored",
-	modeFree: "Free",
+	practiceLang: "Practice language",
 	shortPractice: "Short Text",
 	shortPracticeDesc: "Trace a famous passage line by line",
 	longPractice: "Long Text",
@@ -117,14 +99,8 @@ const EN: Strings = {
 	undo: "Undo",
 	prev: "◀ Prev",
 	next: "Next ▶",
-	scoreAndNext: "Score & Next ▶",
-	scoreAndFinish: "Score & Finish",
 	finish: "Finish",
-	drawFirst: "Write something first.",
-	prevScore: "Previous score",
-	avg: "Avg",
 	complete: "Practice complete! 🎉",
-	overallScore: "Overall accuracy",
 	again: "Retry",
 	otherSet: "Other set",
 	newSheet: "New penmanship sheet",
@@ -136,9 +112,7 @@ const EN: Strings = {
 const JA: Strings = {
 	appTitle: "なぞり書き練習帳",
 	pickKind: "練習する種類を選んでください。",
-	mode: "モード: ",
-	modeScored: "採点",
-	modeFree: "自由",
+	practiceLang: "練習する言語",
 	shortPractice: "短文の練習",
 	shortPracticeDesc: "有名な文章を一行ずつなぞる",
 	longPractice: "長文の練習",
@@ -156,14 +130,8 @@ const JA: Strings = {
 	undo: "元に戻す",
 	prev: "◀ 前へ",
 	next: "次へ ▶",
-	scoreAndNext: "採点して次へ ▶",
-	scoreAndFinish: "採点して完了",
 	finish: "完了",
-	drawFirst: "先に書いてください。",
-	prevScore: "前回のスコア",
-	avg: "平均",
 	complete: "練習完了！🎉",
-	overallScore: "総合精度",
 	again: "もう一度",
 	otherSet: "他のセット",
 	newSheet: "新しいなぞり書き練習帳",
