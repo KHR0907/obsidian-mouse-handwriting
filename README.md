@@ -1,4 +1,4 @@
-# Mouse Handwriting Practice
+# Mouse Handwriting
 
 An Obsidian plugin to practice handwriting **with your mouse** — a mouse-based
 tracing workbook, like a handwriting version of a typing tutor.
@@ -37,7 +37,7 @@ for drawing.
 
 ### From the Obsidian Community Plugins (once approved)
 
-Settings → Community plugins → Browse → search **"Mouse Handwriting Practice"**.
+Settings → Community plugins → Browse → search **"Mouse Handwriting"**.
 
 ### Manual
 
