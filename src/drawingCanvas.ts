@@ -13,7 +13,10 @@ export type GuideStyle = "outline" | "filled" | "none";
 export interface DrawingCanvasOptions {
 	target: string;
 	guide: GuideStyle;
-	size: number;
+	/** Convenience: square canvas of side `size`. Ignored if width/height given. */
+	size?: number;
+	width?: number;
+	height?: number;
 	/** CSS color for the user's strokes. */
 	strokeColor?: string;
 	strokeWidth?: number;
@@ -27,7 +30,12 @@ interface Point {
 export class DrawingCanvas {
 	readonly el: HTMLCanvasElement;
 	private ctx: CanvasRenderingContext2D;
-	private opts: Required<DrawingCanvasOptions>;
+	private target: string;
+	private guide: GuideStyle;
+	private strokeColor: string;
+	private strokeWidth: number;
+	private width: number;
+	private height: number;
 
 	/** Completed strokes, plus the in-progress one. */
 	private strokes: Point[][] = [];
@@ -35,15 +43,17 @@ export class DrawingCanvas {
 	private drawing = false;
 
 	constructor(parent: HTMLElement, options: DrawingCanvasOptions) {
-		this.opts = {
-			strokeColor: "#e63946",
-			strokeWidth: 6,
-			...options,
-		};
+		const side = options.size ?? 340;
+		this.width = options.width ?? side;
+		this.height = options.height ?? side;
+		this.target = options.target;
+		this.guide = options.guide;
+		this.strokeColor = options.strokeColor ?? "#e63946";
+		this.strokeWidth = options.strokeWidth ?? 6;
 
 		const canvas = document.createElement("canvas");
-		canvas.width = this.opts.size;
-		canvas.height = this.opts.size;
+		canvas.width = this.width;
+		canvas.height = this.height;
 		canvas.addClass("penmanship-canvas");
 		parent.appendChild(canvas);
 		this.el = canvas;
@@ -109,7 +119,7 @@ export class DrawingCanvas {
 	}
 
 	setGuide(guide: GuideStyle) {
-		this.opts.guide = guide;
+		this.guide = guide;
 		this.redraw();
 	}
 
@@ -117,32 +127,55 @@ export class DrawingCanvas {
 		return this.strokes.length === 0 && !this.current;
 	}
 
-	/** The font used for both the guide and the target scoring mask. */
+	private cachedFont: { text: string; font: string } | null = null;
+
+	/**
+	 * Font used for both the guide and the target scoring mask.
+	 * Shrinks from a target height until the text fits within BOTH the canvas
+	 * width and height (with margin), so no target ever clips — whether it's a
+	 * single glyph on a square canvas or a full line of a poem on a wide one.
+	 */
 	private glyphFont(): string {
-		// Leave headroom so descenders/tall glyphs fit.
-		const fontSize = Math.floor(this.opts.size * 0.7);
-		return `${fontSize}px sans-serif`;
+		const text = this.target;
+		if (this.cachedFont && this.cachedFont.text === text) {
+			return this.cachedFont.font;
+		}
+		const margin = 0.85; // keep 15% padding inside the canvas
+		const maxWidth = this.width * margin;
+		const maxHeight = this.height * margin;
+		// Start from the vertical budget, shrink until width also fits.
+		let fontSize = Math.floor(maxHeight);
+		this.ctx.save();
+		while (fontSize > 8) {
+			this.ctx.font = `${fontSize}px sans-serif`;
+			if (this.ctx.measureText(text).width <= maxWidth) break;
+			fontSize -= 2;
+		}
+		this.ctx.restore();
+		const font = `${fontSize}px sans-serif`;
+		this.cachedFont = { text, font };
+		return font;
 	}
 
 	private drawGuide() {
-		if (this.opts.guide === "none" || !this.opts.target) return;
+		if (this.guide === "none" || !this.target) return;
 		const { ctx } = this;
-		const cx = this.opts.size / 2;
-		const cy = this.opts.size / 2;
+		const cx = this.width / 2;
+		const cy = this.height / 2;
 
 		ctx.save();
 		ctx.font = this.glyphFont();
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
 
-		if (this.opts.guide === "filled") {
+		if (this.guide === "filled") {
 			ctx.fillStyle = "rgba(120, 120, 120, 0.22)";
-			ctx.fillText(this.opts.target, cx, cy);
+			ctx.fillText(this.target, cx, cy);
 		} else {
 			// outline
 			ctx.lineWidth = 2;
 			ctx.strokeStyle = "rgba(120, 120, 120, 0.55)";
-			ctx.strokeText(this.opts.target, cx, cy);
+			ctx.strokeText(this.target, cx, cy);
 		}
 		ctx.restore();
 	}
@@ -150,8 +183,8 @@ export class DrawingCanvas {
 	private drawStrokes() {
 		const { ctx } = this;
 		ctx.save();
-		ctx.strokeStyle = this.opts.strokeColor;
-		ctx.lineWidth = this.opts.strokeWidth;
+		ctx.strokeStyle = this.strokeColor;
+		ctx.lineWidth = this.strokeWidth;
 		ctx.lineCap = "round";
 		ctx.lineJoin = "round";
 
@@ -175,11 +208,11 @@ export class DrawingCanvas {
 
 	private redraw() {
 		const { ctx } = this;
-		ctx.clearRect(0, 0, this.opts.size, this.opts.size);
+		ctx.clearRect(0, 0, this.width, this.height);
 		// White background so exported PNGs are readable on any theme.
 		ctx.save();
 		ctx.fillStyle = "#ffffff";
-		ctx.fillRect(0, 0, this.opts.size, this.opts.size);
+		ctx.fillRect(0, 0, this.width, this.height);
 		ctx.restore();
 		this.drawGuide();
 		this.drawStrokes();
@@ -187,10 +220,11 @@ export class DrawingCanvas {
 
 	/** Coverage mask of the target glyph, thickened for scoring tolerance. */
 	targetMaskPixels(): { pixels: Uint8ClampedArray; width: number; height: number } {
-		const size = this.opts.size;
+		const w = this.width;
+		const h = this.height;
 		const off = document.createElement("canvas");
-		off.width = size;
-		off.height = size;
+		off.width = w;
+		off.height = h;
 		const octx = off.getContext("2d");
 		if (!octx) throw new Error("Could not get offscreen context.");
 
@@ -199,29 +233,30 @@ export class DrawingCanvas {
 		octx.textBaseline = "middle";
 		octx.fillStyle = "#000000";
 		// Thicken the glyph with a stroke halo so small mouse wobble is forgiven.
-		octx.lineWidth = Math.max(4, Math.floor(this.opts.strokeWidth * 1.2));
+		octx.lineWidth = Math.max(4, Math.floor(this.strokeWidth * 1.2));
 		octx.strokeStyle = "#000000";
 		octx.lineJoin = "round";
-		const cx = size / 2;
-		const cy = size / 2;
-		octx.strokeText(this.opts.target, cx, cy);
-		octx.fillText(this.opts.target, cx, cy);
+		const cx = w / 2;
+		const cy = h / 2;
+		octx.strokeText(this.target, cx, cy);
+		octx.fillText(this.target, cx, cy);
 
-		const img = octx.getImageData(0, 0, size, size);
-		return { pixels: img.data, width: size, height: size };
+		const img = octx.getImageData(0, 0, w, h);
+		return { pixels: img.data, width: w, height: h };
 	}
 
 	/** Coverage mask of just the user's strokes (no guide, no background). */
 	userMaskPixels(): { pixels: Uint8ClampedArray; width: number; height: number } {
-		const size = this.opts.size;
+		const w = this.width;
+		const h = this.height;
 		const off = document.createElement("canvas");
-		off.width = size;
-		off.height = size;
+		off.width = w;
+		off.height = h;
 		const octx = off.getContext("2d");
 		if (!octx) throw new Error("Could not get offscreen context.");
 
 		octx.strokeStyle = "#000000";
-		octx.lineWidth = this.opts.strokeWidth;
+		octx.lineWidth = this.strokeWidth;
 		octx.lineCap = "round";
 		octx.lineJoin = "round";
 		const all = this.current ? [...this.strokes, this.current] : this.strokes;
@@ -239,8 +274,8 @@ export class DrawingCanvas {
 			octx.stroke();
 		}
 
-		const img = octx.getImageData(0, 0, size, size);
-		return { pixels: img.data, width: size, height: size };
+		const img = octx.getImageData(0, 0, w, h);
+		return { pixels: img.data, width: w, height: h };
 	}
 
 	/** Export the visible canvas (background + guide + strokes) as a PNG blob. */

@@ -1,7 +1,7 @@
 /* ---- Full-page practice view ---- */
 .penmanship-view {
 	padding: 20px;
-	max-width: 640px;
+	max-width: 680px;
 	margin: 0 auto;
 	display: flex;
 	flex-direction: column;
@@ -80,11 +80,19 @@
 }
 
 /* Target + canvas */
+.penmanship-source {
+	text-align: center;
+	font-size: 0.85em;
+	color: var(--text-muted);
+	font-style: italic;
+}
 .penmanship-target-label {
 	text-align: center;
-	font-size: 1.4em;
+	font-size: 1.3em;
 	font-weight: 600;
 	color: var(--text-normal);
+	line-height: 1.4;
+	word-break: keep-all;
 }
 .penmanship-canvas-wrap {
 	display: flex;
@@ -92,11 +100,14 @@
 	line-height: 0;
 }
 .penmanship-canvas {
-	border: 1px solid var(--background-modifier-border);
+	border: none;
 	border-radius: 8px;
 	cursor: crosshair;
 	touch-action: none;
 	background: #ffffff;
+	/* Scale the backing store down to fit narrow panes without clipping. */
+	max-width: 100%;
+	height: auto;
 }
 
 .penmanship-result {

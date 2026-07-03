@@ -4,22 +4,20 @@
  * Pure data + helpers. No Obsidian, no DOM.
  */
 
-export type SetKind = "jamo" | "alphabet" | "number" | "word" | "longtext";
+export type SetKind = "jamo" | "alphabet" | "number" | "word" | "quote";
 
 export interface ProblemSet {
 	id: string;
 	name: string;
 	kind: SetKind;
-	/** The cells to trace, in order. For longtext these are eojeol (words). */
+	/**
+	 * The cells to trace, in order. For jamo/alphabet/number/word these are
+	 * single glyphs or short words. For `quote` each cell is one LINE of a
+	 * famous passage, traced across a wide canvas.
+	 */
 	cells: string[];
-}
-
-/** Split a sentence/paragraph into eojeol (whitespace-separated words). */
-export function splitEojeol(text: string): string[] {
-	return text
-		.split(/\s+/)
-		.map((s) => s.trim())
-		.filter((s) => s.length > 0);
+	/** For quotes: the work + author, shown as attribution. */
+	source?: string;
 }
 
 const KOREAN_JAMO = [
@@ -42,11 +40,68 @@ const ENGLISH_WORDS = [
 	"blue", "gold", "wind", "song", "hope", "home", "time", "life",
 ];
 
-const KOREAN_SENTENCE =
-	"오늘도 좋은 하루 되세요 마음이 따뜻해지는 글씨 연습";
+/**
+ * Famous passages for the "긴 글 연습" — trace a beloved poem / song / novel
+ * line by line into your note. Each string is one line (one cell).
+ */
+interface QuoteDef {
+	id: string;
+	name: string;
+	source: string;
+	lines: string[];
+}
 
-const ENGLISH_SENTENCE =
-	"the quick brown fox jumps over the lazy dog";
+const QUOTES: QuoteDef[] = [
+	{
+		id: "quote-seosi",
+		name: "서시 — 윤동주",
+		source: "윤동주 「서시」",
+		lines: [
+			"죽는 날까지 하늘을 우러러",
+			"한 점 부끄럼이 없기를,",
+			"잎새에 이는 바람에도",
+			"나는 괴로워했다.",
+			"별을 노래하는 마음으로",
+			"모든 죽어 가는 것을 사랑해야지",
+		],
+	},
+	{
+		id: "quote-azalea",
+		name: "진달래꽃 — 김소월",
+		source: "김소월 「진달래꽃」",
+		lines: [
+			"나 보기가 역겨워",
+			"가실 때에는",
+			"말없이 고이 보내 드리오리다",
+			"영변에 약산",
+			"진달래꽃",
+			"아름 따다 가실 길에 뿌리오리다",
+		],
+	},
+	{
+		id: "quote-frost",
+		name: "The Road Not Taken — Frost",
+		source: "Robert Frost, \"The Road Not Taken\"",
+		lines: [
+			"Two roads diverged in a yellow wood,",
+			"And sorry I could not travel both",
+			"And be one traveler, long I stood",
+			"I took the one less traveled by,",
+			"And that has made all the difference.",
+		],
+	},
+	{
+		id: "quote-austen",
+		name: "Pride and Prejudice — Austen",
+		source: "Jane Austen, Pride and Prejudice",
+		lines: [
+			"It is a truth universally acknowledged,",
+			"that a single man in possession",
+			"of a good fortune,",
+			"must be in want of a wife.",
+		],
+	},
+];
 
 export const BUILTIN_SETS: ProblemSet[] = [
 	{ id: "korean-jamo", name: "한글 자모 연습", kind: "jamo", cells: KOREAN_JAMO },
@@ -55,18 +110,15 @@ export const BUILTIN_SETS: ProblemSet[] = [
 	{ id: "numbers", name: "숫자 0–9", kind: "number", cells: DIGITS },
 	{ id: "korean-words", name: "한글 단어 연습", kind: "word", cells: KOREAN_WORDS },
 	{ id: "english-words", name: "영어 단어 연습", kind: "word", cells: ENGLISH_WORDS },
-	{
-		id: "korean-longtext",
-		name: "긴 글 연습 (한글)",
-		kind: "longtext",
-		cells: splitEojeol(KOREAN_SENTENCE),
-	},
-	{
-		id: "english-longtext",
-		name: "긴 글 연습 (영어)",
-		kind: "longtext",
-		cells: splitEojeol(ENGLISH_SENTENCE),
-	},
+	...QUOTES.map(
+		(q): ProblemSet => ({
+			id: q.id,
+			name: q.name,
+			kind: "quote",
+			cells: q.lines,
+			source: q.source,
+		})
+	),
 ];
 
 export function getSet(id: string): ProblemSet | undefined {

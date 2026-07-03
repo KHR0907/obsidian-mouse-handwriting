@@ -14,6 +14,9 @@ import { BUILTIN_SETS } from "./problemSets";
 
 export const PENMANSHIP_VIEW_TYPE = "penmanship-view";
 export const CANVAS_SIZE = 340;
+/** Wide canvas for tracing a full line of a poem/song/novel. */
+export const QUOTE_CANVAS_WIDTH = 600;
+export const QUOTE_CANVAS_HEIGHT = 150;
 
 export class PenmanshipView extends TextFileView {
 	private session: PracticeSession | null = null;
@@ -118,10 +121,11 @@ export class PenmanshipView extends TextFileView {
 		for (const set of BUILTIN_SETS) {
 			const card = grid.createDiv({ cls: "penmanship-set-card" });
 			card.createEl("div", { text: set.name, cls: "penmanship-set-name" });
-			card.createEl("div", {
-				text: `${set.cells.length}문제 · 예: ${set.cells.slice(0, 3).join(" ")}`,
-				cls: "penmanship-set-meta",
-			});
+			const meta =
+				set.kind === "quote"
+					? `${set.cells.length}줄 · ${set.cells[0]}`
+					: `${set.cells.length}문제 · 예: ${set.cells.slice(0, 3).join(" ")}`;
+			card.createEl("div", { text: meta, cls: "penmanship-set-meta" });
 			card.onclick = () => {
 				this.session = new PracticeSession(set, mode);
 				this.persist();
@@ -150,18 +154,29 @@ export class PenmanshipView extends TextFileView {
 		const fill = bar.createDiv({ cls: "penmanship-bar-fill" });
 		fill.style.width = `${((s.currentIndex) / s.total) * 100}%`;
 
-		// Target label
+		// Attribution for quote sets (e.g. 윤동주 「서시」).
+		if (s.set.kind === "quote" && s.set.source) {
+			root.createEl("div", {
+				text: s.set.source,
+				cls: "penmanship-source",
+			});
+		}
+
+		// Target label — the glyph/word/line to trace.
 		root.createEl("div", {
 			text: s.currentCell,
 			cls: "penmanship-target-label",
 		});
 
-		// Canvas
+		// Canvas — quotes use a wide (landscape) canvas so a full line fits at a
+		// readable size; everything else uses a square canvas.
 		const canvasWrap = root.createDiv({ cls: "penmanship-canvas-wrap" });
+		const isQuote = s.set.kind === "quote";
 		this.canvas = new DrawingCanvas(canvasWrap, {
 			target: s.currentCell,
 			guide: "outline",
-			size: CANVAS_SIZE,
+			width: isQuote ? QUOTE_CANVAS_WIDTH : CANVAS_SIZE,
+			height: isQuote ? QUOTE_CANVAS_HEIGHT : CANVAS_SIZE,
 		});
 
 		const result = root.createDiv({ cls: "penmanship-result" });
