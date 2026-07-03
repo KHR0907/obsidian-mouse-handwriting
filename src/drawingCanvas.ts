@@ -30,6 +30,7 @@ interface Point {
 export class DrawingCanvas {
 	readonly el: HTMLCanvasElement;
 	private ctx: CanvasRenderingContext2D;
+	private doc: Document;
 	private target: string;
 	private guide: GuideStyle;
 	private strokeColor: string;
@@ -51,7 +52,9 @@ export class DrawingCanvas {
 		this.strokeColor = options.strokeColor ?? "#e63946";
 		this.strokeWidth = options.strokeWidth ?? 6;
 
-		const canvas = document.createElement("canvas");
+		// Use the parent's document so the canvas works in popout windows.
+		this.doc = parent.ownerDocument;
+		const canvas = this.doc.createElement("canvas");
 		canvas.width = this.width;
 		canvas.height = this.height;
 		canvas.addClass("penmanship-canvas");
@@ -66,12 +69,20 @@ export class DrawingCanvas {
 		this.redraw();
 	}
 
+	private readonly onUpBound = () => this.onUp();
+
 	private registerEvents() {
 		this.el.addEventListener("mousedown", (e) => this.onDown(e));
 		this.el.addEventListener("mousemove", (e) => this.onMove(e));
-		// End the stroke on mouseup anywhere, and if the mouse leaves the canvas.
-		window.addEventListener("mouseup", () => this.onUp());
+		// End the stroke on mouseup anywhere in the document (popout-safe),
+		// and if the mouse leaves the canvas.
+		this.doc.addEventListener("mouseup", this.onUpBound);
 		this.el.addEventListener("mouseleave", () => this.onUp());
+	}
+
+	/** Remove document-level listeners. Call before discarding this canvas. */
+	destroy() {
+		this.doc.removeEventListener("mouseup", this.onUpBound);
 	}
 
 	private toLocal(e: MouseEvent): Point {
@@ -264,7 +275,7 @@ export class DrawingCanvas {
 	 * no guide. Used for the "guide removed" preview on the completion screen.
 	 */
 	snapshotStrokes(): string {
-		const off = document.createElement("canvas");
+		const off = this.doc.createElement("canvas");
 		off.width = this.width;
 		off.height = this.height;
 		const octx = off.getContext("2d");

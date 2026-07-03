@@ -4,7 +4,6 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
-	TFile,
 	normalizePath,
 } from "obsidian";
 import { PenmanshipView, PENMANSHIP_VIEW_TYPE } from "./view";
@@ -48,11 +47,8 @@ export default class PenmanshipPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData()
-		);
+		const data = ((await this.loadData()) ?? {}) as Partial<PenmanshipSettings>;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
 	}
 
 	async saveSettings() {
@@ -91,10 +87,11 @@ export default class PenmanshipPlugin extends Plugin {
 			// Empty content → view renders the set picker.
 			const file = await this.app.vault.create(path, "");
 			const leaf = this.app.workspace.getLeaf(true);
-			await leaf.openFile(file as TFile);
+			await leaf.openFile(file);
 		} catch (err) {
 			console.error(err);
-			new Notice(s.createFailed + (err as Error).message);
+			const msg = err instanceof Error ? err.message : String(err);
+			new Notice(s.createFailed + msg);
 		}
 	}
 }

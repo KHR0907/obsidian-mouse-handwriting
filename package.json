@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-mouse-handwriting",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Practice handwriting with your mouse inside Obsidian.",
 	"main": "main.js",
 	"scripts": {
@@ -8,7 +8,13 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"test": "node --test src/*.test.mjs"
 	},
-	"keywords": ["obsidian", "handwriting", "penmanship", "practice", "tracing"],
+	"keywords": [
+		"obsidian",
+		"handwriting",
+		"penmanship",
+		"practice",
+		"tracing"
+	],
 	"author": "KHR0907",
 	"license": "MIT",
 	"devDependencies": {

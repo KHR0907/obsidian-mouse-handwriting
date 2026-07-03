@@ -99,6 +99,7 @@ export class PenmanshipView extends TextFileView {
 
 	clear(): void {
 		this.session = null;
+		this.canvas?.destroy();
 		this.canvas = null;
 	}
 
@@ -111,6 +112,9 @@ export class PenmanshipView extends TextFileView {
 
 	private render() {
 		const root = this.contentEl;
+		// Detach the previous canvas's document listeners before rebuilding.
+		this.canvas?.destroy();
+		this.canvas = null;
 		root.empty();
 		root.addClass("penmanship-view");
 
