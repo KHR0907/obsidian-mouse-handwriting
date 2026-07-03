@@ -17,6 +17,7 @@ import {
 	longSetFromQuote,
 	ProblemSet,
 } from "./problemSets";
+import { Lang, strings, setName, Strings } from "./i18n";
 
 export const PENMANSHIP_VIEW_TYPE = "penmanship-view";
 export const CANVAS_SIZE = 340;
@@ -36,9 +37,22 @@ export class PenmanshipView extends TextFileView {
 	private pendingMode: "scored" | "free" = "scored";
 	/** Which picker screen is showing (only relevant when session is null). */
 	private menu: MenuState = "root";
+	/** Reads the current UI language from plugin settings. */
+	private getLang: () => Lang;
 
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(leaf: WorkspaceLeaf, getLang: () => Lang) {
 		super(leaf);
+		this.getLang = getLang;
+	}
+
+	/** Current localized strings. */
+	private get t(): Strings {
+		return strings(this.getLang());
+	}
+
+	/** Re-render in place (e.g. after a language change). */
+	rerender() {
+		this.render();
 	}
 
 	getViewType(): string {
@@ -120,10 +134,11 @@ export class PenmanshipView extends TextFileView {
 	}
 
 	private renderModeRow(wrap: HTMLElement) {
+		const t = this.t;
 		const modeRow = wrap.createDiv({ cls: "penmanship-mode-row" });
-		modeRow.createSpan({ text: "모드: " });
-		const scoredBtn = modeRow.createEl("button", { text: "채점" });
-		const freeBtn = modeRow.createEl("button", { text: "자유" });
+		modeRow.createSpan({ text: t.mode });
+		const scoredBtn = modeRow.createEl("button", { text: t.modeScored });
+		const freeBtn = modeRow.createEl("button", { text: t.modeFree });
 		const sync = () => {
 			scoredBtn.toggleClass("mod-cta", this.pendingMode === "scored");
 			freeBtn.toggleClass("mod-cta", this.pendingMode === "free");
@@ -140,12 +155,11 @@ export class PenmanshipView extends TextFileView {
 	}
 
 	private renderRootMenu(root: HTMLElement) {
+		const t = this.t;
+		const lang = this.getLang();
 		const wrap = root.createDiv({ cls: "penmanship-picker" });
-		wrap.createEl("h2", { text: "따라쓰기 연습장" });
-		wrap.createEl("p", {
-			text: "연습할 종류를 고르세요.",
-			cls: "penmanship-sub",
-		});
+		wrap.createEl("h2", { text: t.appTitle });
+		wrap.createEl("p", { text: t.pickKind, cls: "penmanship-sub" });
 		this.renderModeRow(wrap);
 
 		const grid = wrap.createDiv({ cls: "penmanship-set-grid" });
@@ -153,9 +167,14 @@ export class PenmanshipView extends TextFileView {
 		// Glyph / word sets — enter directly.
 		for (const set of GLYPH_SETS) {
 			const card = grid.createDiv({ cls: "penmanship-set-card" });
-			card.createEl("div", { text: set.name, cls: "penmanship-set-name" });
 			card.createEl("div", {
-				text: `${set.cells.length}문제 · 예: ${set.cells.slice(0, 3).join(" ")}`,
+				text: setName(lang, set.id),
+				cls: "penmanship-set-name",
+			});
+			card.createEl("div", {
+				text: `${set.cells.length}${t.problems} · ${t.example}: ${set.cells
+					.slice(0, 3)
+					.join(" ")}`,
 				cls: "penmanship-set-meta",
 			});
 			card.onclick = () => this.startSet(set);
@@ -163,9 +182,12 @@ export class PenmanshipView extends TextFileView {
 
 		// Short-text: a poem/song/novel traced one line at a time.
 		const shortCard = grid.createDiv({ cls: "penmanship-set-card" });
-		shortCard.createEl("div", { text: "짧은 글 연습", cls: "penmanship-set-name" });
 		shortCard.createEl("div", {
-			text: "유명한 글귀를 한 줄씩 따라쓰기",
+			text: t.shortPractice,
+			cls: "penmanship-set-name",
+		});
+		shortCard.createEl("div", {
+			text: t.shortPracticeDesc,
 			cls: "penmanship-set-meta",
 		});
 		shortCard.onclick = () => {
@@ -175,9 +197,12 @@ export class PenmanshipView extends TextFileView {
 
 		// Long-text: a whole passage traced at once.
 		const longCard = grid.createDiv({ cls: "penmanship-set-card" });
-		longCard.createEl("div", { text: "긴 글 연습", cls: "penmanship-set-name" });
 		longCard.createEl("div", {
-			text: "글귀 하나를 통째로 따라쓰기",
+			text: t.longPractice,
+			cls: "penmanship-set-name",
+		});
+		longCard.createEl("div", {
+			text: t.longPracticeDesc,
 			cls: "penmanship-set-meta",
 		});
 		longCard.onclick = () => {
@@ -187,22 +212,23 @@ export class PenmanshipView extends TextFileView {
 	}
 
 	private renderQuoteList(root: HTMLElement, kind: "quote-short" | "quote-long") {
+		const t = this.t;
 		const wrap = root.createDiv({ cls: "penmanship-picker" });
 
-		const back = wrap.createEl("button", { text: "◀ 뒤로", cls: "penmanship-back" });
+		const back = wrap.createEl("button", {
+			text: t.back,
+			cls: "penmanship-back",
+		});
 		back.onclick = () => {
 			this.menu = "root";
 			this.render();
 		};
 
 		wrap.createEl("h2", {
-			text: kind === "quote-short" ? "짧은 글 연습" : "긴 글 연습",
+			text: kind === "quote-short" ? t.shortPractice : t.longPractice,
 		});
 		wrap.createEl("p", {
-			text:
-				kind === "quote-short"
-					? "글귀를 고르면 한 줄씩 따라 씁니다."
-					: "글귀를 고르면 전체를 통째로 따라 씁니다.",
+			text: kind === "quote-short" ? t.pickQuoteShort : t.pickQuoteLong,
 			cls: "penmanship-sub",
 		});
 
@@ -211,7 +237,7 @@ export class PenmanshipView extends TextFileView {
 			const card = grid.createDiv({ cls: "penmanship-set-card" });
 			card.createEl("div", { text: q.name, cls: "penmanship-set-name" });
 			card.createEl("div", {
-				text: `${q.lines.length}줄 · ${q.lines[0]}`,
+				text: `${q.lines.length}${t.lines} · ${q.lines[0]}`,
 				cls: "penmanship-set-meta",
 			});
 			card.onclick = () => {
@@ -224,10 +250,19 @@ export class PenmanshipView extends TextFileView {
 		}
 	}
 
+	/** Localized title for a set: glyph sets use i18n keys, quotes use their name. */
+	private setTitle(set: ProblemSet): string {
+		if (set.kind === "quote-short" || set.kind === "quote-long") {
+			return set.name;
+		}
+		return setName(this.getLang(), set.id);
+	}
+
 	private renderPractice(root: HTMLElement) {
+		const t = this.t;
 		const s = this.session!;
 		const header = root.createDiv({ cls: "penmanship-header" });
-		header.createEl("div", { text: s.set.name, cls: "penmanship-title" });
+		header.createEl("div", { text: this.setTitle(s.set), cls: "penmanship-title" });
 
 		const prog = header.createDiv({ cls: "penmanship-progress" });
 		prog.createSpan({
@@ -236,7 +271,7 @@ export class PenmanshipView extends TextFileView {
 		});
 		if (s.mode === "scored") {
 			prog.createSpan({
-				text: `평균 ${s.overall()}%`,
+				text: `${t.avg} ${s.overall()}%`,
 				cls: "penmanship-progress-score",
 			});
 		}
@@ -258,7 +293,7 @@ export class PenmanshipView extends TextFileView {
 		// Target label — the glyph/word/line to trace. For a whole passage the
 		// text itself is on the canvas, so keep the label short.
 		root.createEl("div", {
-			text: isLongQuote ? "아래 글 전체를 따라 써보세요" : s.currentCell,
+			text: isLongQuote ? t.traceWhole : s.currentCell,
 			cls: "penmanship-target-label",
 		});
 
@@ -283,31 +318,31 @@ export class PenmanshipView extends TextFileView {
 		const result = root.createDiv({ cls: "penmanship-result" });
 		const prev = s.scores[s.currentIndex];
 		if (prev !== null && s.mode === "scored") {
-			result.setText(`이전 점수 ${prev}%`);
+			result.setText(`${t.prevScore} ${prev}%`);
 		}
 
 		// Controls
 		const controls = root.createDiv({ cls: "penmanship-controls" });
 
-		const clearBtn = controls.createEl("button", { text: "지우기" });
+		const clearBtn = controls.createEl("button", { text: t.clear });
 		clearBtn.onclick = () => {
 			this.canvas?.clear();
 			result.setText("");
 		};
 
-		const undoBtn = controls.createEl("button", { text: "되돌리기" });
+		const undoBtn = controls.createEl("button", { text: t.undo });
 		undoBtn.onclick = () => this.canvas?.undo();
 
 		let guideOn = true;
-		const guideBtn = controls.createEl("button", { text: "가이드 끄기" });
+		const guideBtn = controls.createEl("button", { text: t.guideOff });
 		guideBtn.onclick = () => {
 			guideOn = !guideOn;
 			this.canvas?.setGuide(guideOn ? "outline" : "none");
-			guideBtn.setText(guideOn ? "가이드 끄기" : "가이드 켜기");
+			guideBtn.setText(guideOn ? t.guideOff : t.guideOn);
 		};
 
 		if (s.currentIndex > 0) {
-			const prevBtn = controls.createEl("button", { text: "◀ 이전" });
+			const prevBtn = controls.createEl("button", { text: t.prev });
 			prevBtn.onclick = () => {
 				s.prev();
 				this.persist();
@@ -318,11 +353,11 @@ export class PenmanshipView extends TextFileView {
 		const nextLabel =
 			s.mode === "scored"
 				? s.currentIndex === s.total - 1
-					? "채점 & 완료"
-					: "채점 & 다음 ▶"
+					? t.scoreAndFinish
+					: t.scoreAndNext
 				: s.currentIndex === s.total - 1
-					? "완료"
-					: "다음 ▶";
+					? t.finish
+					: t.next;
 		const nextBtn = controls.createEl("button", {
 			text: nextLabel,
 			cls: "mod-cta",
@@ -330,13 +365,13 @@ export class PenmanshipView extends TextFileView {
 		nextBtn.onclick = () => {
 			if (s.mode === "scored") {
 				if (!this.canvas || this.canvas.isEmpty()) {
-					result.setText("먼저 써주세요.");
+					result.setText(t.drawFirst);
 					return;
 				}
-				const t = this.canvas.targetMaskPixels();
+				const tm = this.canvas.targetMaskPixels();
 				const u = this.canvas.userMaskPixels();
 				const sc = score(
-					maskFromAlpha(t.pixels, t.width, t.height),
+					maskFromAlpha(tm.pixels, tm.width, tm.height),
 					maskFromAlpha(u.pixels, u.width, u.height)
 				);
 				s.recordScore(sc.score);
@@ -356,14 +391,15 @@ export class PenmanshipView extends TextFileView {
 	}
 
 	private renderComplete(root: HTMLElement) {
+		const t = this.t;
 		const s = this.session!;
 		const wrap = root.createDiv({ cls: "penmanship-complete" });
-		wrap.createEl("h2", { text: "연습 완료! 🎉" });
-		wrap.createEl("div", { text: s.set.name, cls: "penmanship-sub" });
+		wrap.createEl("h2", { text: t.complete });
+		wrap.createEl("div", { text: this.setTitle(s.set), cls: "penmanship-sub" });
 
 		if (s.mode === "scored") {
 			wrap.createEl("div", {
-				text: `전체 평균 정확도 ${s.overall()}%`,
+				text: `${t.overallScore} ${s.overall()}%`,
 				cls: "penmanship-complete-score",
 			});
 			// Per-cell breakdown only makes sense with multiple cells.
@@ -386,7 +422,7 @@ export class PenmanshipView extends TextFileView {
 
 		const controls = wrap.createDiv({ cls: "penmanship-controls" });
 		const again = controls.createEl("button", {
-			text: "다시하기",
+			text: t.again,
 			cls: "mod-cta",
 		});
 		again.onclick = () => {
@@ -394,7 +430,7 @@ export class PenmanshipView extends TextFileView {
 			this.persist();
 			this.render();
 		};
-		const other = controls.createEl("button", { text: "다른 세트" });
+		const other = controls.createEl("button", { text: t.otherSet });
 		other.onclick = () => {
 			this.session = null;
 			this.persist();
