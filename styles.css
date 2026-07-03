@@ -109,6 +109,15 @@
 	height: auto;
 }
 
+.penmanship-guide-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	justify-content: center;
+	font-size: 0.9em;
+	color: var(--text-muted);
+}
+
 .penmanship-controls {
 	display: flex;
 	gap: 6px;
@@ -123,4 +132,16 @@
 	flex-direction: column;
 	gap: 12px;
 	align-items: center;
+}
+.penmanship-gallery {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	justify-content: center;
+}
+.penmanship-shot {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	max-width: 100%;
+	height: auto;
 }

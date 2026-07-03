@@ -7,7 +7,7 @@
  */
 
 import { TextFileView, WorkspaceLeaf } from "obsidian";
-import { DrawingCanvas } from "./drawingCanvas";
+import { DrawingCanvas, GuideStyle } from "./drawingCanvas";
 import { PracticeSession } from "./practiceSession";
 import {
 	glyphSetsFor,
@@ -37,6 +37,10 @@ export class PenmanshipView extends TextFileView {
 	private menu: MenuState = "root";
 	/** Which content language's sets to show in the picker. Default English. */
 	private contentLang: ContentLang = "en";
+	/** Which guide the canvas shows this session. */
+	private guideStyle: GuideStyle = "outline";
+	/** PNG (data URL) of each traced cell without its guide, for the finish screen. */
+	private snapshots: string[] = [];
 	/** Reads the current UI language from plugin settings. */
 	private getLang: () => Lang;
 
@@ -80,6 +84,9 @@ export class PenmanshipView extends TextFileView {
 			// Empty / invalid file → let the user pick a set from the top menu.
 			this.session = null;
 			this.menu = "root";
+		} else {
+			// Snapshots aren't persisted to the file; start fresh for this open.
+			this.snapshots = new Array(this.session.total).fill("");
 		}
 		this.render();
 	}
@@ -129,8 +136,16 @@ export class PenmanshipView extends TextFileView {
 	/** Start a session from a chosen set and re-render. */
 	private startSet(set: ProblemSet) {
 		this.session = new PracticeSession(set);
+		this.snapshots = new Array(set.cells.length).fill("");
 		this.persist();
 		this.render();
+	}
+
+	/** Capture the current canvas strokes (guide-free) for the finish screen. */
+	private captureSnapshot() {
+		if (this.canvas && this.session && !this.canvas.isEmpty()) {
+			this.snapshots[this.session.currentIndex] = this.canvas.snapshotStrokes();
+		}
 	}
 
 	/** Dropdown to choose which content language's sets are shown. */
@@ -299,10 +314,29 @@ export class PenmanshipView extends TextFileView {
 		}
 		this.canvas = new DrawingCanvas(canvasWrap, {
 			target: s.currentCell,
-			guide: "outline",
+			guide: this.guideStyle,
 			width: cw,
 			height: ch,
 		});
+
+		// Guide-style selector.
+		const guideRow = root.createDiv({ cls: "penmanship-guide-row" });
+		guideRow.createSpan({ text: `${t.guide}: ` });
+		const guideSel = guideRow.createEl("select", { cls: "dropdown" });
+		const guideOpts: { v: GuideStyle; label: string }[] = [
+			{ v: "outline", label: t.guideOutline },
+			{ v: "filled", label: t.guideFilled },
+			{ v: "lines", label: t.guideLines },
+			{ v: "none", label: t.guideNone },
+		];
+		for (const o of guideOpts) {
+			const opt = guideSel.createEl("option", { text: o.label, value: o.v });
+			if (o.v === this.guideStyle) opt.selected = true;
+		}
+		guideSel.onchange = () => {
+			this.guideStyle = guideSel.value as GuideStyle;
+			this.canvas?.setGuide(this.guideStyle);
+		};
 
 		// Controls
 		const controls = root.createDiv({ cls: "penmanship-controls" });
@@ -313,17 +347,10 @@ export class PenmanshipView extends TextFileView {
 		const undoBtn = controls.createEl("button", { text: t.undo });
 		undoBtn.onclick = () => this.canvas?.undo();
 
-		let guideOn = true;
-		const guideBtn = controls.createEl("button", { text: t.guideOff });
-		guideBtn.onclick = () => {
-			guideOn = !guideOn;
-			this.canvas?.setGuide(guideOn ? "outline" : "none");
-			guideBtn.setText(guideOn ? t.guideOff : t.guideOn);
-		};
-
 		if (s.currentIndex > 0) {
 			const prevBtn = controls.createEl("button", { text: t.prev });
 			prevBtn.onclick = () => {
+				this.captureSnapshot();
 				s.prev();
 				this.persist();
 				this.render();
@@ -336,6 +363,7 @@ export class PenmanshipView extends TextFileView {
 			cls: "mod-cta",
 		});
 		nextBtn.onclick = () => {
+			this.captureSnapshot();
 			s.next();
 			this.persist();
 			this.render();
@@ -348,6 +376,17 @@ export class PenmanshipView extends TextFileView {
 		const wrap = root.createDiv({ cls: "penmanship-complete" });
 		wrap.createEl("h2", { text: t.complete });
 		wrap.createEl("div", { text: this.setTitle(s.set), cls: "penmanship-sub" });
+
+		// Guide-free preview of what the user wrote.
+		const shots = this.snapshots.filter((src) => src);
+		if (shots.length > 0) {
+			wrap.createEl("div", { text: t.yourWriting, cls: "penmanship-sub" });
+			const gallery = wrap.createDiv({ cls: "penmanship-gallery" });
+			for (const src of shots) {
+				const img = gallery.createEl("img", { cls: "penmanship-shot" });
+				img.src = src;
+			}
+		}
 
 		const controls = wrap.createDiv({ cls: "penmanship-controls" });
 		const again = controls.createEl("button", {

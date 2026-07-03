@@ -1,14 +1,14 @@
 /**
  * DrawingCanvas — the drawing engine.
  *
- * Owns an HTML5 canvas. Draws a faint target-glyph guide in the background,
- * lets the user draw strokes with the mouse on top, and can export either a
- * flat PNG (guide + strokes) or the raw target/user coverage for scoring.
+ * Owns an HTML5 canvas. Draws a background guide (the target glyph as an
+ * outline/fill, or evenly spaced horizontal ruled lines, or nothing) and lets
+ * the user draw strokes with the mouse on top.
  *
  * Knows nothing about scoring or Obsidian.
  */
 
-export type GuideStyle = "outline" | "filled" | "none";
+export type GuideStyle = "outline" | "filled" | "lines" | "none";
 
 export interface DrawingCanvasOptions {
 	target: string;
@@ -190,22 +190,39 @@ export class DrawingCanvas {
 	}
 
 	private drawGuide() {
-		if (this.guide === "none" || !this.target) return;
+		if (this.guide === "none") return;
 		const { ctx } = this;
 		ctx.save();
-		if (this.guide === "filled") {
-			ctx.fillStyle = "rgba(120, 120, 120, 0.22)";
-			this.paintTarget(ctx, (line, x, y) => ctx.fillText(line, x, y));
-		} else {
-			ctx.lineWidth = 2;
-			ctx.strokeStyle = "rgba(120, 120, 120, 0.55)";
-			this.paintTarget(ctx, (line, x, y) => ctx.strokeText(line, x, y));
+		if (this.guide === "lines") {
+			this.drawRuledLines(ctx);
+		} else if (this.target) {
+			if (this.guide === "filled") {
+				ctx.fillStyle = "rgba(120, 120, 120, 0.22)";
+				this.paintTarget(ctx, (line, x, y) => ctx.fillText(line, x, y));
+			} else {
+				// outline
+				ctx.lineWidth = 2;
+				ctx.strokeStyle = "rgba(120, 120, 120, 0.55)";
+				this.paintTarget(ctx, (line, x, y) => ctx.strokeText(line, x, y));
+			}
 		}
 		ctx.restore();
 	}
 
-	private drawStrokes() {
-		const { ctx } = this;
+	/** Evenly spaced horizontal ruled lines, like writing paper. */
+	private drawRuledLines(ctx: CanvasRenderingContext2D) {
+		const gap = Math.max(28, Math.round(this.height / 6));
+		ctx.strokeStyle = "rgba(120, 120, 120, 0.28)";
+		ctx.lineWidth = 1;
+		for (let y = gap; y < this.height; y += gap) {
+			ctx.beginPath();
+			ctx.moveTo(8, y + 0.5);
+			ctx.lineTo(this.width - 8, y + 0.5);
+			ctx.stroke();
+		}
+	}
+
+	private drawStrokes(ctx: CanvasRenderingContext2D = this.ctx) {
 		ctx.save();
 		ctx.strokeStyle = this.strokeColor;
 		ctx.lineWidth = this.strokeWidth;
@@ -240,6 +257,22 @@ export class DrawingCanvas {
 		ctx.restore();
 		this.drawGuide();
 		this.drawStrokes();
+	}
+
+	/**
+	 * A PNG data URL of just the user's strokes on a white background —
+	 * no guide. Used for the "guide removed" preview on the completion screen.
+	 */
+	snapshotStrokes(): string {
+		const off = document.createElement("canvas");
+		off.width = this.width;
+		off.height = this.height;
+		const octx = off.getContext("2d");
+		if (!octx) return "";
+		octx.fillStyle = "#ffffff";
+		octx.fillRect(0, 0, this.width, this.height);
+		this.drawStrokes(octx);
+		return off.toDataURL("image/png");
 	}
 
 }

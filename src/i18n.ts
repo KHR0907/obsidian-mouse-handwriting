@@ -31,8 +31,12 @@ export interface Strings {
 	lines: string; // "N lines"
 	example: string; // "e.g."
 	traceWhole: string; // long-quote label
-	guideOff: string;
-	guideOn: string;
+	guide: string; // "Guide" label
+	guideOutline: string;
+	guideFilled: string;
+	guideLines: string;
+	guideNone: string;
+	yourWriting: string; // finish-screen preview heading
 	clear: string;
 	undo: string;
 	prev: string;
@@ -62,8 +66,12 @@ const KO: Strings = {
 	lines: "줄",
 	example: "예",
 	traceWhole: "아래 글 전체를 따라 써보세요",
-	guideOff: "가이드 끄기",
-	guideOn: "가이드 켜기",
+	guide: "가이드",
+	guideOutline: "텍스트(외곽선)",
+	guideFilled: "텍스트(채움)",
+	guideLines: "가로줄",
+	guideNone: "없음",
+	yourWriting: "내가 쓴 글씨 (가이드 없음)",
 	clear: "지우기",
 	undo: "되돌리기",
 	prev: "◀ 이전",
@@ -93,8 +101,12 @@ const EN: Strings = {
 	lines: "lines",
 	example: "e.g.",
 	traceWhole: "Trace the whole passage below",
-	guideOff: "Hide guide",
-	guideOn: "Show guide",
+	guide: "Guide",
+	guideOutline: "Text (outline)",
+	guideFilled: "Text (filled)",
+	guideLines: "Ruled lines",
+	guideNone: "None",
+	yourWriting: "Your writing (no guide)",
 	clear: "Clear",
 	undo: "Undo",
 	prev: "◀ Prev",
@@ -124,8 +136,12 @@ const JA: Strings = {
 	lines: "行",
 	example: "例",
 	traceWhole: "下の文章全体をなぞってください",
-	guideOff: "ガイドを隠す",
-	guideOn: "ガイドを表示",
+	guide: "ガイド",
+	guideOutline: "テキスト(輪郭)",
+	guideFilled: "テキスト(塗り)",
+	guideLines: "罫線",
+	guideNone: "なし",
+	yourWriting: "書いた文字（ガイドなし）",
 	clear: "消去",
 	undo: "元に戻す",
 	prev: "◀ 前へ",
