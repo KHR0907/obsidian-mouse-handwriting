@@ -1,9 +1,10 @@
 {
-	"id": "penmanship-practice",
-	"name": "Penmanship Practice",
+	"id": "mouse-handwriting-practice",
+	"name": "Mouse Handwriting Practice",
 	"version": "1.0.0",
 	"minAppVersion": "1.4.0",
-	"description": "Practice handwriting and mouse control by tracing target glyphs with your mouse. Get an overlap accuracy score or draw freely, then save the result into your note.",
-	"author": "hyungrae0907",
+	"description": "Practice handwriting with your mouse. Trace letters, words, and famous passages (Korean/English/Japanese) on a full-page canvas with text or ruled-line guides.",
+	"author": "KHR0907",
+	"authorUrl": "https://github.com/KHR0907",
 	"isDesktopOnly": true
 }
