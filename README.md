@@ -7,6 +7,20 @@ Open a dedicated full-page practice sheet, pick what to trace, and write over an
 on-screen guide. Great for handwriting practice and for training mouse control
 for drawing.
 
+## Screenshots
+
+Pick what to practice — sets grouped by language:
+
+![Practice menu](assets/menu.png)
+
+Trace the target over a guide with your mouse:
+
+![Tracing a letter](assets/practice.png)
+
+Finish to see a guide-free image of what you wrote:
+
+![Completion preview](assets/complete.png)
+
 ## Features
 
 - **Dedicated `.penmanship` sheets** — a full-page canvas, opened like an
