@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-// Mirror of PracticeSession's pure visited-based logic for dependency-free tests.
+// Mirror of PracticeSession's pure logic for dependency-free tests.
 // (src/practiceSession.ts is TS + imports Obsidian-free problemSets; we test the
 // algorithm directly here.)
 
@@ -9,8 +9,7 @@ class Session {
 	constructor(cells) {
 		this.cells = cells;
 		this.currentIndex = 0;
-		this.visited = new Array(cells.length).fill(false);
-		this.visited[0] = true;
+		this.finished = false;
 	}
 	get total() {
 		return this.cells.length;
@@ -18,10 +17,9 @@ class Session {
 	next() {
 		if (this.currentIndex < this.total - 1) {
 			this.currentIndex++;
-			this.visited[this.currentIndex] = true;
 			return true;
 		}
-		this.visited[this.currentIndex] = true;
+		this.finished = true;
 		return false;
 	}
 	prev() {
@@ -32,58 +30,53 @@ class Session {
 		return false;
 	}
 	isComplete() {
-		return this.visited[this.total - 1] === true;
+		return this.finished;
 	}
 	reset() {
 		this.currentIndex = 0;
-		this.visited = new Array(this.total).fill(false);
-		this.visited[0] = true;
+		this.finished = false;
 	}
 }
 
-test("starts at first cell, first cell already visited, not complete", () => {
+test("starts at first cell, not complete", () => {
 	const s = new Session(["a", "b", "c"]);
 	assert.equal(s.currentIndex, 0);
-	assert.equal(s.visited[0], true);
 	assert.equal(s.isComplete(), false);
+});
+
+test("single-cell set is NOT complete on open (regression: long-text)", () => {
+	const s = new Session(["whole poem"]);
+	assert.equal(s.isComplete(), false);
+});
+
+test("single-cell set completes only after pressing finish", () => {
+	const s = new Session(["whole poem"]);
+	assert.equal(s.next(), false); // pressing 완료 on the only cell
+	assert.equal(s.isComplete(), true);
 });
 
 test("advances and stops at last cell", () => {
 	const s = new Session(["a", "b"]);
 	assert.equal(s.next(), true);
 	assert.equal(s.currentIndex, 1);
-	assert.equal(s.next(), false); // no move past last
-	assert.equal(s.currentIndex, 1);
+	assert.equal(s.isComplete(), false); // reached last cell but not finished yet
+	assert.equal(s.next(), false); // finish
+	assert.equal(s.isComplete(), true);
 });
 
-test("prev stops at first cell", () => {
+test("prev stops at first cell and does not finish", () => {
 	const s = new Session(["a", "b"]);
 	assert.equal(s.prev(), false);
 	assert.equal(s.currentIndex, 0);
-});
-
-test("complete once the last cell is visited", () => {
-	const s = new Session(["a", "b", "c"]);
 	assert.equal(s.isComplete(), false);
-	s.next();
-	assert.equal(s.isComplete(), false);
-	s.next();
-	assert.equal(s.isComplete(), true);
 });
 
-test("finishing on the last cell (next returns false) marks complete", () => {
-	const s = new Session(["only"]);
-	// single-cell set: already on last cell
-	assert.equal(s.next(), false);
-	assert.equal(s.isComplete(), true);
-});
-
-test("reset clears visited except the first cell", () => {
+test("reset clears progress and finished flag", () => {
 	const s = new Session(["a", "b"]);
+	s.next();
 	s.next();
 	assert.equal(s.isComplete(), true);
 	s.reset();
 	assert.equal(s.currentIndex, 0);
 	assert.equal(s.isComplete(), false);
-	assert.equal(s.visited[0], true);
 });
