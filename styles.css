@@ -1,0 +1,37 @@
+.penmanship-block {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	align-items: flex-start;
+	padding: 8px 0;
+}
+
+.penmanship-canvas-wrap {
+	line-height: 0;
+}
+
+.penmanship-canvas {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	cursor: crosshair;
+	touch-action: none;
+	max-width: 100%;
+	background: #ffffff;
+}
+
+.penmanship-controls {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.penmanship-result {
+	font-weight: 600;
+	min-height: 1.2em;
+	color: var(--text-accent);
+}
+
+.penmanship-warning {
+	color: var(--text-error);
+	font-size: 0.9em;
+}

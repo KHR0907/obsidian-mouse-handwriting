@@ -1,0 +1,9 @@
+{
+	"id": "penmanship-practice",
+	"name": "Penmanship Practice",
+	"version": "1.0.0",
+	"minAppVersion": "1.4.0",
+	"description": "Practice handwriting and mouse control by tracing target glyphs with your mouse. Get an overlap accuracy score or draw freely, then save the result into your note.",
+	"author": "hyungrae0907",
+	"isDesktopOnly": true
+}
