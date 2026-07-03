@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-mouse-handwriting",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Practice handwriting with your mouse inside Obsidian.",
 	"main": "main.js",
 	"scripts": {
