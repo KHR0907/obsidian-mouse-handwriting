@@ -127,55 +127,79 @@ export class DrawingCanvas {
 		return this.strokes.length === 0 && !this.current;
 	}
 
-	private cachedFont: { text: string; font: string } | null = null;
+	/** Target text split into display lines (supports multi-line passages). */
+	private lines(): string[] {
+		return this.target.split("\n");
+	}
+
+	private cachedLayout: {
+		text: string;
+		fontSize: number;
+		lineHeight: number;
+	} | null = null;
 
 	/**
-	 * Font used for both the guide and the target scoring mask.
-	 * Shrinks from a target height until the text fits within BOTH the canvas
-	 * width and height (with margin), so no target ever clips — whether it's a
-	 * single glyph on a square canvas or a full line of a poem on a wide one.
+	 * Fit the target (one or many lines) inside the canvas.
+	 * Shrinks the font until every line fits the width AND all lines stacked
+	 * fit the height (with margin), so nothing ever clips — whether it's a
+	 * single glyph, a poem line, or a whole multi-line passage.
 	 */
-	private glyphFont(): string {
-		const text = this.target;
-		if (this.cachedFont && this.cachedFont.text === text) {
-			return this.cachedFont.font;
+	private layout(): { fontSize: number; lineHeight: number } {
+		if (this.cachedLayout && this.cachedLayout.text === this.target) {
+			return this.cachedLayout;
 		}
-		const margin = 0.85; // keep 15% padding inside the canvas
+		const margin = 0.85;
 		const maxWidth = this.width * margin;
 		const maxHeight = this.height * margin;
-		// Start from the vertical budget, shrink until width also fits.
-		let fontSize = Math.floor(maxHeight);
+		const lines = this.lines();
+		const lineGap = 1.25; // line height as a multiple of font size
+
+		let fontSize = Math.floor(this.height * 0.8);
 		this.ctx.save();
 		while (fontSize > 8) {
 			this.ctx.font = `${fontSize}px sans-serif`;
-			if (this.ctx.measureText(text).width <= maxWidth) break;
+			const widest = Math.max(
+				...lines.map((l) => this.ctx.measureText(l).width)
+			);
+			const stackHeight = lines.length * fontSize * lineGap;
+			if (widest <= maxWidth && stackHeight <= maxHeight) break;
 			fontSize -= 2;
 		}
 		this.ctx.restore();
-		const font = `${fontSize}px sans-serif`;
-		this.cachedFont = { text, font };
-		return font;
+		const layout = { text: this.target, fontSize, lineHeight: fontSize * lineGap };
+		this.cachedLayout = layout;
+		return layout;
+	}
+
+	/** Draw the target text (all lines, centered) using the given paint fn. */
+	private paintTarget(
+		ctx: CanvasRenderingContext2D,
+		paint: (line: string, x: number, y: number) => void
+	) {
+		const { fontSize, lineHeight } = this.layout();
+		const lines = this.lines();
+		ctx.font = `${fontSize}px sans-serif`;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		const cx = this.width / 2;
+		const totalH = lines.length * lineHeight;
+		const startY = this.height / 2 - totalH / 2 + lineHeight / 2;
+		lines.forEach((line, i) => {
+			paint(line, cx, startY + i * lineHeight);
+		});
 	}
 
 	private drawGuide() {
 		if (this.guide === "none" || !this.target) return;
 		const { ctx } = this;
-		const cx = this.width / 2;
-		const cy = this.height / 2;
-
 		ctx.save();
-		ctx.font = this.glyphFont();
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-
 		if (this.guide === "filled") {
 			ctx.fillStyle = "rgba(120, 120, 120, 0.22)";
-			ctx.fillText(this.target, cx, cy);
+			this.paintTarget(ctx, (line, x, y) => ctx.fillText(line, x, y));
 		} else {
-			// outline
 			ctx.lineWidth = 2;
 			ctx.strokeStyle = "rgba(120, 120, 120, 0.55)";
-			ctx.strokeText(this.target, cx, cy);
+			this.paintTarget(ctx, (line, x, y) => ctx.strokeText(line, x, y));
 		}
 		ctx.restore();
 	}
@@ -228,18 +252,15 @@ export class DrawingCanvas {
 		const octx = off.getContext("2d");
 		if (!octx) throw new Error("Could not get offscreen context.");
 
-		octx.font = this.glyphFont();
-		octx.textAlign = "center";
-		octx.textBaseline = "middle";
 		octx.fillStyle = "#000000";
 		// Thicken the glyph with a stroke halo so small mouse wobble is forgiven.
 		octx.lineWidth = Math.max(4, Math.floor(this.strokeWidth * 1.2));
 		octx.strokeStyle = "#000000";
 		octx.lineJoin = "round";
-		const cx = w / 2;
-		const cy = h / 2;
-		octx.strokeText(this.target, cx, cy);
-		octx.fillText(this.target, cx, cy);
+		this.paintTarget(octx, (line, x, y) => {
+			octx.strokeText(line, x, y);
+			octx.fillText(line, x, y);
+		});
 
 		const img = octx.getImageData(0, 0, w, h);
 		return { pixels: img.data, width: w, height: h };

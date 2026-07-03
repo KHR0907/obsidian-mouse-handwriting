@@ -12,6 +12,9 @@
 .penmanship-picker h2 {
 	margin-bottom: 4px;
 }
+.penmanship-back {
+	margin-bottom: 8px;
+}
 .penmanship-sub {
 	color: var(--text-muted);
 	margin-top: 0;

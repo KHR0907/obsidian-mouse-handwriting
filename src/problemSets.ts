@@ -1,24 +1,40 @@
 /**
- * ProblemSets — built-in practice content, like 한컴타자연습's word / long-text drills.
+ * ProblemSets — built-in practice content.
+ *
+ * Two flavours:
+ *  - Glyph/word sets (jamo, alphabet, number, word) — a menu you enter directly.
+ *  - Quote catalog (poems / songs / novels) — reachable via two menus:
+ *      "짧은 글 연습" → pick a quote → trace it ONE LINE at a time.
+ *      "긴 글 연습"   → pick a quote → trace the WHOLE passage at once.
  *
  * Pure data + helpers. No Obsidian, no DOM.
  */
 
-export type SetKind = "jamo" | "alphabet" | "number" | "word" | "quote";
+export type SetKind =
+	| "jamo"
+	| "alphabet"
+	| "number"
+	| "word"
+	| "quote-short" // one line per cell (wide canvas)
+	| "quote-long"; // whole multi-line passage in one cell (tall canvas)
 
 export interface ProblemSet {
 	id: string;
 	name: string;
 	kind: SetKind;
 	/**
-	 * The cells to trace, in order. For jamo/alphabet/number/word these are
-	 * single glyphs or short words. For `quote` each cell is one LINE of a
-	 * famous passage, traced across a wide canvas.
+	 * The cells to trace, in order.
+	 *  - glyph/word: single glyphs or short words.
+	 *  - quote-short: each cell is one line of the passage.
+	 *  - quote-long: a single cell containing the whole passage (lines joined
+	 *    by "\n").
 	 */
 	cells: string[];
 	/** For quotes: the work + author, shown as attribution. */
 	source?: string;
 }
+
+// ---- glyph / word content ------------------------------------------------
 
 const KOREAN_JAMO = [
 	"ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ",
@@ -40,20 +56,28 @@ const ENGLISH_WORDS = [
 	"blue", "gold", "wind", "song", "hope", "home", "time", "life",
 ];
 
-/**
- * Famous passages for the "긴 글 연습" — trace a beloved poem / song / novel
- * line by line into your note. Each string is one line (one cell).
- */
-interface QuoteDef {
+/** Glyph/word sets shown as top-level menu entries. */
+export const GLYPH_SETS: ProblemSet[] = [
+	{ id: "korean-jamo", name: "한글 자모 연습", kind: "jamo", cells: KOREAN_JAMO },
+	{ id: "alphabet-upper", name: "알파벳 대문자", kind: "alphabet", cells: ALPHABET_UPPER },
+	{ id: "alphabet-lower", name: "알파벳 소문자", kind: "alphabet", cells: ALPHABET_LOWER },
+	{ id: "numbers", name: "숫자 0–9", kind: "number", cells: DIGITS },
+	{ id: "korean-words", name: "한글 단어 연습", kind: "word", cells: KOREAN_WORDS },
+	{ id: "english-words", name: "영어 단어 연습", kind: "word", cells: ENGLISH_WORDS },
+];
+
+// ---- quote catalog (poems / songs / novels) ------------------------------
+
+export interface Quote {
 	id: string;
 	name: string;
 	source: string;
 	lines: string[];
 }
 
-const QUOTES: QuoteDef[] = [
+export const QUOTES: Quote[] = [
 	{
-		id: "quote-seosi",
+		id: "seosi",
 		name: "서시 — 윤동주",
 		source: "윤동주 「서시」",
 		lines: [
@@ -66,20 +90,19 @@ const QUOTES: QuoteDef[] = [
 		],
 	},
 	{
-		id: "quote-azalea",
+		id: "azalea",
 		name: "진달래꽃 — 김소월",
 		source: "김소월 「진달래꽃」",
 		lines: [
 			"나 보기가 역겨워",
 			"가실 때에는",
 			"말없이 고이 보내 드리오리다",
-			"영변에 약산",
-			"진달래꽃",
+			"영변에 약산 진달래꽃",
 			"아름 따다 가실 길에 뿌리오리다",
 		],
 	},
 	{
-		id: "quote-frost",
+		id: "frost",
 		name: "The Road Not Taken — Frost",
 		source: "Robert Frost, \"The Road Not Taken\"",
 		lines: [
@@ -91,36 +114,58 @@ const QUOTES: QuoteDef[] = [
 		],
 	},
 	{
-		id: "quote-austen",
+		id: "austen",
 		name: "Pride and Prejudice — Austen",
 		source: "Jane Austen, Pride and Prejudice",
 		lines: [
 			"It is a truth universally acknowledged,",
 			"that a single man in possession",
-			"of a good fortune,",
-			"must be in want of a wife.",
+			"of a good fortune, must be in",
+			"want of a wife.",
 		],
 	},
 ];
 
-export const BUILTIN_SETS: ProblemSet[] = [
-	{ id: "korean-jamo", name: "한글 자모 연습", kind: "jamo", cells: KOREAN_JAMO },
-	{ id: "alphabet-upper", name: "알파벳 대문자", kind: "alphabet", cells: ALPHABET_UPPER },
-	{ id: "alphabet-lower", name: "알파벳 소문자", kind: "alphabet", cells: ALPHABET_LOWER },
-	{ id: "numbers", name: "숫자 0–9", kind: "number", cells: DIGITS },
-	{ id: "korean-words", name: "한글 단어 연습", kind: "word", cells: KOREAN_WORDS },
-	{ id: "english-words", name: "영어 단어 연습", kind: "word", cells: ENGLISH_WORDS },
-	...QUOTES.map(
-		(q): ProblemSet => ({
-			id: q.id,
-			name: q.name,
-			kind: "quote",
-			cells: q.lines,
-			source: q.source,
-		})
-	),
-];
+export function getQuote(id: string): Quote | undefined {
+	return QUOTES.find((q) => q.id === id);
+}
 
+/** Build the ProblemSet for tracing a quote one line at a time. */
+export function shortSetFromQuote(q: Quote): ProblemSet {
+	return {
+		id: `quote-short:${q.id}`,
+		name: q.name,
+		kind: "quote-short",
+		cells: q.lines,
+		source: q.source,
+	};
+}
+
+/** Build the ProblemSet for tracing a whole quote at once (single cell). */
+export function longSetFromQuote(q: Quote): ProblemSet {
+	return {
+		id: `quote-long:${q.id}`,
+		name: q.name,
+		kind: "quote-long",
+		cells: [q.lines.join("\n")],
+		source: q.source,
+	};
+}
+
+/**
+ * Resolve any set id back to a ProblemSet — used when reopening a .penmanship
+ * file. Handles glyph sets and both quote flavours.
+ */
 export function getSet(id: string): ProblemSet | undefined {
-	return BUILTIN_SETS.find((s) => s.id === id);
+	const glyph = GLYPH_SETS.find((s) => s.id === id);
+	if (glyph) return glyph;
+
+	const [prefix, quoteId] = id.split(":");
+	if (quoteId) {
+		const q = getQuote(quoteId);
+		if (!q) return undefined;
+		if (prefix === "quote-short") return shortSetFromQuote(q);
+		if (prefix === "quote-long") return longSetFromQuote(q);
+	}
+	return undefined;
 }

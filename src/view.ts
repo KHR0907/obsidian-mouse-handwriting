@@ -10,17 +10,32 @@ import { TextFileView, WorkspaceLeaf } from "obsidian";
 import { DrawingCanvas } from "./drawingCanvas";
 import { maskFromAlpha, score } from "./scorer";
 import { PracticeSession } from "./practiceSession";
-import { BUILTIN_SETS } from "./problemSets";
+import {
+	GLYPH_SETS,
+	QUOTES,
+	shortSetFromQuote,
+	longSetFromQuote,
+	ProblemSet,
+} from "./problemSets";
 
 export const PENMANSHIP_VIEW_TYPE = "penmanship-view";
 export const CANVAS_SIZE = 340;
-/** Wide canvas for tracing a full line of a poem/song/novel. */
-export const QUOTE_CANVAS_WIDTH = 600;
-export const QUOTE_CANVAS_HEIGHT = 150;
+/** Wide canvas for tracing one line of a poem/song/novel. */
+export const QUOTE_LINE_WIDTH = 600;
+export const QUOTE_LINE_HEIGHT = 130;
+/** Tall canvas for tracing a whole multi-line passage at once. */
+export const QUOTE_FULL_WIDTH = 600;
+export const QUOTE_FULL_HEIGHT = 460;
+
+type MenuState = "root" | "quote-short" | "quote-long";
 
 export class PenmanshipView extends TextFileView {
 	private session: PracticeSession | null = null;
 	private canvas: DrawingCanvas | null = null;
+	/** Selected mode while navigating the picker menus. */
+	private pendingMode: "scored" | "free" = "scored";
+	/** Which picker screen is showing (only relevant when session is null). */
+	private menu: MenuState = "root";
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -48,8 +63,9 @@ export class PenmanshipView extends TextFileView {
 		}
 		this.session = PracticeSession.fromData(parsed);
 		if (!this.session) {
-			// Empty / invalid file → let the user pick a set.
+			// Empty / invalid file → let the user pick a set from the top menu.
 			this.session = null;
+			this.menu = "root";
 		}
 		this.render();
 	}
@@ -89,47 +105,121 @@ export class PenmanshipView extends TextFileView {
 	}
 
 	private renderSetPicker(root: HTMLElement) {
+		if (this.menu === "quote-short" || this.menu === "quote-long") {
+			this.renderQuoteList(root, this.menu);
+			return;
+		}
+		this.renderRootMenu(root);
+	}
+
+	/** Start a session from a chosen set and re-render. */
+	private startSet(set: ProblemSet) {
+		this.session = new PracticeSession(set, this.pendingMode);
+		this.persist();
+		this.render();
+	}
+
+	private renderModeRow(wrap: HTMLElement) {
+		const modeRow = wrap.createDiv({ cls: "penmanship-mode-row" });
+		modeRow.createSpan({ text: "모드: " });
+		const scoredBtn = modeRow.createEl("button", { text: "채점" });
+		const freeBtn = modeRow.createEl("button", { text: "자유" });
+		const sync = () => {
+			scoredBtn.toggleClass("mod-cta", this.pendingMode === "scored");
+			freeBtn.toggleClass("mod-cta", this.pendingMode === "free");
+		};
+		scoredBtn.onclick = () => {
+			this.pendingMode = "scored";
+			sync();
+		};
+		freeBtn.onclick = () => {
+			this.pendingMode = "free";
+			sync();
+		};
+		sync();
+	}
+
+	private renderRootMenu(root: HTMLElement) {
 		const wrap = root.createDiv({ cls: "penmanship-picker" });
 		wrap.createEl("h2", { text: "따라쓰기 연습장" });
 		wrap.createEl("p", {
-			text: "연습할 문제 세트를 고르세요.",
+			text: "연습할 종류를 고르세요.",
+			cls: "penmanship-sub",
+		});
+		this.renderModeRow(wrap);
+
+		const grid = wrap.createDiv({ cls: "penmanship-set-grid" });
+
+		// Glyph / word sets — enter directly.
+		for (const set of GLYPH_SETS) {
+			const card = grid.createDiv({ cls: "penmanship-set-card" });
+			card.createEl("div", { text: set.name, cls: "penmanship-set-name" });
+			card.createEl("div", {
+				text: `${set.cells.length}문제 · 예: ${set.cells.slice(0, 3).join(" ")}`,
+				cls: "penmanship-set-meta",
+			});
+			card.onclick = () => this.startSet(set);
+		}
+
+		// Short-text: a poem/song/novel traced one line at a time.
+		const shortCard = grid.createDiv({ cls: "penmanship-set-card" });
+		shortCard.createEl("div", { text: "짧은 글 연습", cls: "penmanship-set-name" });
+		shortCard.createEl("div", {
+			text: "유명한 글귀를 한 줄씩 따라쓰기",
+			cls: "penmanship-set-meta",
+		});
+		shortCard.onclick = () => {
+			this.menu = "quote-short";
+			this.render();
+		};
+
+		// Long-text: a whole passage traced at once.
+		const longCard = grid.createDiv({ cls: "penmanship-set-card" });
+		longCard.createEl("div", { text: "긴 글 연습", cls: "penmanship-set-name" });
+		longCard.createEl("div", {
+			text: "글귀 하나를 통째로 따라쓰기",
+			cls: "penmanship-set-meta",
+		});
+		longCard.onclick = () => {
+			this.menu = "quote-long";
+			this.render();
+		};
+	}
+
+	private renderQuoteList(root: HTMLElement, kind: "quote-short" | "quote-long") {
+		const wrap = root.createDiv({ cls: "penmanship-picker" });
+
+		const back = wrap.createEl("button", { text: "◀ 뒤로", cls: "penmanship-back" });
+		back.onclick = () => {
+			this.menu = "root";
+			this.render();
+		};
+
+		wrap.createEl("h2", {
+			text: kind === "quote-short" ? "짧은 글 연습" : "긴 글 연습",
+		});
+		wrap.createEl("p", {
+			text:
+				kind === "quote-short"
+					? "글귀를 고르면 한 줄씩 따라 씁니다."
+					: "글귀를 고르면 전체를 통째로 따라 씁니다.",
 			cls: "penmanship-sub",
 		});
 
-		const modeRow = wrap.createDiv({ cls: "penmanship-mode-row" });
-		modeRow.createSpan({ text: "모드: " });
-		let mode: "scored" | "free" = "scored";
-		const scoredBtn = modeRow.createEl("button", {
-			text: "채점",
-			cls: "mod-cta",
-		});
-		const freeBtn = modeRow.createEl("button", { text: "자유" });
-		const syncMode = () => {
-			scoredBtn.toggleClass("mod-cta", mode === "scored");
-			freeBtn.toggleClass("mod-cta", mode === "free");
-		};
-		scoredBtn.onclick = () => {
-			mode = "scored";
-			syncMode();
-		};
-		freeBtn.onclick = () => {
-			mode = "free";
-			syncMode();
-		};
-
 		const grid = wrap.createDiv({ cls: "penmanship-set-grid" });
-		for (const set of BUILTIN_SETS) {
+		for (const q of QUOTES) {
 			const card = grid.createDiv({ cls: "penmanship-set-card" });
-			card.createEl("div", { text: set.name, cls: "penmanship-set-name" });
-			const meta =
-				set.kind === "quote"
-					? `${set.cells.length}줄 · ${set.cells[0]}`
-					: `${set.cells.length}문제 · 예: ${set.cells.slice(0, 3).join(" ")}`;
-			card.createEl("div", { text: meta, cls: "penmanship-set-meta" });
+			card.createEl("div", { text: q.name, cls: "penmanship-set-name" });
+			card.createEl("div", {
+				text: `${q.lines.length}줄 · ${q.lines[0]}`,
+				cls: "penmanship-set-meta",
+			});
 			card.onclick = () => {
-				this.session = new PracticeSession(set, mode);
-				this.persist();
-				this.render();
+				const set =
+					kind === "quote-short"
+						? shortSetFromQuote(q)
+						: longSetFromQuote(q);
+				this.startSet(set);
 			};
 		}
 	}
@@ -154,29 +244,40 @@ export class PenmanshipView extends TextFileView {
 		const fill = bar.createDiv({ cls: "penmanship-bar-fill" });
 		fill.style.width = `${((s.currentIndex) / s.total) * 100}%`;
 
+		const isShortQuote = s.set.kind === "quote-short";
+		const isLongQuote = s.set.kind === "quote-long";
+
 		// Attribution for quote sets (e.g. 윤동주 「서시」).
-		if (s.set.kind === "quote" && s.set.source) {
+		if ((isShortQuote || isLongQuote) && s.set.source) {
 			root.createEl("div", {
 				text: s.set.source,
 				cls: "penmanship-source",
 			});
 		}
 
-		// Target label — the glyph/word/line to trace.
+		// Target label — the glyph/word/line to trace. For a whole passage the
+		// text itself is on the canvas, so keep the label short.
 		root.createEl("div", {
-			text: s.currentCell,
+			text: isLongQuote ? "아래 글 전체를 따라 써보세요" : s.currentCell,
 			cls: "penmanship-target-label",
 		});
 
-		// Canvas — quotes use a wide (landscape) canvas so a full line fits at a
-		// readable size; everything else uses a square canvas.
+		// Canvas geometry: single line → wide; whole passage → tall; else square.
 		const canvasWrap = root.createDiv({ cls: "penmanship-canvas-wrap" });
-		const isQuote = s.set.kind === "quote";
+		let cw = CANVAS_SIZE;
+		let ch = CANVAS_SIZE;
+		if (isShortQuote) {
+			cw = QUOTE_LINE_WIDTH;
+			ch = QUOTE_LINE_HEIGHT;
+		} else if (isLongQuote) {
+			cw = QUOTE_FULL_WIDTH;
+			ch = QUOTE_FULL_HEIGHT;
+		}
 		this.canvas = new DrawingCanvas(canvasWrap, {
 			target: s.currentCell,
 			guide: "outline",
-			width: isQuote ? QUOTE_CANVAS_WIDTH : CANVAS_SIZE,
-			height: isQuote ? QUOTE_CANVAS_HEIGHT : CANVAS_SIZE,
+			width: cw,
+			height: ch,
 		});
 
 		const result = root.createDiv({ cls: "penmanship-result" });
@@ -265,15 +366,22 @@ export class PenmanshipView extends TextFileView {
 				text: `전체 평균 정확도 ${s.overall()}%`,
 				cls: "penmanship-complete-score",
 			});
-			const summary = wrap.createDiv({ cls: "penmanship-summary" });
-			s.set.cells.forEach((cell, i) => {
-				const chip = summary.createDiv({ cls: "penmanship-chip" });
-				chip.createSpan({ text: cell, cls: "penmanship-chip-cell" });
-				chip.createSpan({
-					text: `${s.scores[i] ?? 0}%`,
-					cls: "penmanship-chip-score",
+			// Per-cell breakdown only makes sense with multiple cells.
+			if (s.total > 1) {
+				const summary = wrap.createDiv({ cls: "penmanship-summary" });
+				s.set.cells.forEach((cell, i) => {
+					const label = cell.replace(/\n/g, " ");
+					const chip = summary.createDiv({ cls: "penmanship-chip" });
+					chip.createSpan({
+						text: label.length > 16 ? label.slice(0, 16) + "…" : label,
+						cls: "penmanship-chip-cell",
+					});
+					chip.createSpan({
+						text: `${s.scores[i] ?? 0}%`,
+						cls: "penmanship-chip-score",
+					});
 				});
-			});
+			}
 		}
 
 		const controls = wrap.createDiv({ cls: "penmanship-controls" });
