@@ -30,6 +30,11 @@ export const QUOTE_FULL_HEIGHT = 460;
 
 type MenuState = "root" | "quote-short" | "quote-long";
 
+/** A typed array of `n` empty strings (avoids `new Array().fill` inferring any[]). */
+function emptyStrings(n: number): string[] {
+	return Array.from({ length: n }, () => "");
+}
+
 export class PenmanshipView extends TextFileView {
 	private session: PracticeSession | null = null;
 	private canvas: DrawingCanvas | null = null;
@@ -86,7 +91,7 @@ export class PenmanshipView extends TextFileView {
 			this.menu = "root";
 		} else {
 			// Snapshots aren't persisted to the file; start fresh for this open.
-			this.snapshots = new Array(this.session.total).fill("");
+			this.snapshots = emptyStrings(this.session.total);
 		}
 		this.render();
 	}
@@ -140,7 +145,7 @@ export class PenmanshipView extends TextFileView {
 	/** Start a session from a chosen set and re-render. */
 	private startSet(set: ProblemSet) {
 		this.session = new PracticeSession(set);
-		this.snapshots = new Array(set.cells.length).fill("");
+		this.snapshots = emptyStrings(set.cells.length);
 		this.persist();
 		this.render();
 	}
