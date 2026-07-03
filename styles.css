@@ -1,37 +1,149 @@
-.penmanship-block {
+/* ---- Full-page practice view ---- */
+.penmanship-view {
+	padding: 20px;
+	max-width: 640px;
+	margin: 0 auto;
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
-	align-items: flex-start;
-	padding: 8px 0;
+	gap: 14px;
 }
 
+/* Set picker */
+.penmanship-picker h2 {
+	margin-bottom: 4px;
+}
+.penmanship-sub {
+	color: var(--text-muted);
+	margin-top: 0;
+}
+.penmanship-mode-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 8px 0 16px;
+}
+.penmanship-set-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 10px;
+}
+.penmanship-set-card {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 12px 14px;
+	cursor: pointer;
+	transition: border-color 0.12s, background 0.12s;
+}
+.penmanship-set-card:hover {
+	border-color: var(--interactive-accent);
+	background: var(--background-modifier-hover);
+}
+.penmanship-set-name {
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+.penmanship-set-meta {
+	font-size: 0.82em;
+	color: var(--text-muted);
+}
+
+/* Practice header + progress */
+.penmanship-header {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.penmanship-title {
+	font-weight: 600;
+	font-size: 1.05em;
+}
+.penmanship-progress {
+	display: flex;
+	justify-content: space-between;
+	font-size: 0.9em;
+	color: var(--text-muted);
+}
+.penmanship-progress-score {
+	color: var(--text-accent);
+	font-weight: 600;
+}
+.penmanship-bar {
+	height: 6px;
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+	overflow: hidden;
+}
+.penmanship-bar-fill {
+	height: 100%;
+	background: var(--interactive-accent);
+	transition: width 0.2s;
+}
+
+/* Target + canvas */
+.penmanship-target-label {
+	text-align: center;
+	font-size: 1.4em;
+	font-weight: 600;
+	color: var(--text-normal);
+}
 .penmanship-canvas-wrap {
+	display: flex;
+	justify-content: center;
 	line-height: 0;
 }
-
 .penmanship-canvas {
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
+	border-radius: 8px;
 	cursor: crosshair;
 	touch-action: none;
-	max-width: 100%;
 	background: #ffffff;
+}
+
+.penmanship-result {
+	text-align: center;
+	min-height: 1.2em;
+	font-weight: 600;
+	color: var(--text-accent);
 }
 
 .penmanship-controls {
 	display: flex;
 	gap: 6px;
 	flex-wrap: wrap;
+	justify-content: center;
 }
 
-.penmanship-result {
-	font-weight: 600;
-	min-height: 1.2em;
+/* Completion screen */
+.penmanship-complete {
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	align-items: center;
+}
+.penmanship-complete-score {
+	font-size: 1.3em;
+	font-weight: 700;
 	color: var(--text-accent);
 }
-
-.penmanship-warning {
-	color: var(--text-error);
-	font-size: 0.9em;
+.penmanship-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	justify-content: center;
+}
+.penmanship-chip {
+	display: inline-flex;
+	gap: 6px;
+	align-items: baseline;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	padding: 3px 10px;
+	font-size: 0.85em;
+}
+.penmanship-chip-cell {
+	font-weight: 600;
+}
+.penmanship-chip-score {
+	color: var(--text-muted);
 }
